@@ -1,10 +1,10 @@
 README
 
-ERL - Evolved Reinforcement Learner
+## ERL - Evolved Reinforcement Learner
 
 =================================================================
 
-SETUP:
+### SETUP:
 
 To get started with ERL, you need your favorite compiler and CMake (http://www.cmake.org/cmake/resources/software.html).
 
