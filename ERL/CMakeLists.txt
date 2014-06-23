@@ -21,6 +21,16 @@ else(OPENCL_HAS_CPP_BINDINGS)
     message("No OpenCL CPP bindings found")
 endif(OPENCL_HAS_CPP_BINDINGS)
 
+find_package(Lua REQUIRED)
+ 
+include_directories(${LUA_INCLUDE_DIR})
+
+find_package(SFML 2 REQUIRED system window graphics network audio)
+ 
+include_directories(${SFML_INCLUDE_DIR})
+ 
 add_executable(ERL "${PROJECT_SOURCE_DIR}/source/Main.cpp")
 
 target_link_libraries(ERL ${OPENCL_LIBRARIES})
+target_link_libraries(ERL ${LUA_LIBRARIES})
+target_link_libraries(ERL ${SFML_LIBRARIES})

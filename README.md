@@ -6,15 +6,27 @@
 
 To get started with ERL, you need your favorite compiler and CMake (http://www.cmake.org/cmake/resources/software.html).
 
-Set CMake's source code directory to the ERL directory (the one that contains the /source folder as well as a CMakeLists.txt).
+You will also need to install 3 libraries: OpenCL (the Nvidia or AMD APP SDK depending on your system), Lua, and SFML.
 
-Set CMake's build directory to the /build/ directory (inside /ERL/).
+The last two can be found at http://www.lua.org/download.html and http://www.sfml-dev.org/download.php
+
+Once you have this libraries all set up, set CMake's source code directory to the ERL directory (the one that contains the /source folder as well as a CMakeLists.txt).
+
+Set CMake's build directory to the same directory as in the previous step. Optionally, you can also set it to a folder of your choice, but this may make browse the source more difficult if you are using Visual Studio.
 
 Then press configure, and choose your compiler.
 
-If the configuration did not result in errors, you can press configure again, and then hit generate. This will generate files necessary for your compiler in the /build/ directory.
+It will likely error if you did not install SFML or Lua to standard locations. If this happens, no fear, there is a fix!
+
+You can specify the paths where CMake looks manually. They will appear in red if they need to be set in the CMake GUI.
+
+SFML is a bit tricky, you have to add a custom variable entry for a variable called SFML_ROOT and set it to the SFML root directory.
+
+When eventually the configuration does not result in errors you can hit generate. This will generate files necessary for your compiler in the /build/ directory.
 
 You should then be able to compile and execute the program. If you are using Visual Studio, you may have to set your startup project to the ERL project.
+
+If you have any issues with installation, let me know in the #erl channel on Slack (where my name is cireneikual).
 
 ##ERL – Evolved Reinforcement Learner – Overview
 
