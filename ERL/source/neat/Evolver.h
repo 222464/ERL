@@ -67,7 +67,7 @@ namespace neat {
 	private:
 		size_t _numInputs, _numOutputs;
 
-		size_t _maxFunctions;
+		std::vector<float> _functionChances;
 
 		std::shared_ptr<NetworkGenotype>(*_pGenotypeFactory)();
 
@@ -89,7 +89,7 @@ namespace neat {
 
 		Evolver();
 
-		void initialize(size_t numInputs, size_t numOutputs, int maxFunctions, std::shared_ptr<class ParentSelector> selector, std::mt19937 &generator, std::shared_ptr<NetworkGenotype>(*pGenotypeFactory)() = defaultGenotypeFactory);
+		void initialize(size_t numInputs, size_t numOutputs, const std::vector<float> &functionChances, std::shared_ptr<class ParentSelector> selector, std::mt19937 &generator, std::shared_ptr<NetworkGenotype>(*pGenotypeFactory)() = defaultGenotypeFactory);
 
 		void clearPopulation();
 

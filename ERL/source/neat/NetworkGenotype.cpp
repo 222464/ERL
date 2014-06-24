@@ -71,7 +71,7 @@ NetworkGenotype::ConnectionSet &NetworkGenotype::ConnectionSet::operator=(const 
 	return *this;
 }
 
-void NetworkGenotype::ConnectionSet::addConnection(float minBias, float maxBias, int maxFunctions, const std::shared_ptr<ConnectionGene> &connection, InnovationNumberType &innovationNumber, std::mt19937 &generator) {
+void NetworkGenotype::ConnectionSet::addConnection(float minBias, float maxBias, const std::vector<float> &functionChances, const std::shared_ptr<ConnectionGene> &connection, InnovationNumberType &innovationNumber, std::mt19937 &generator) {
 	std::uniform_real_distribution<float> biasDist(minBias, maxBias);
 
 	_connections.push_back(connection);
@@ -80,13 +80,13 @@ void NetworkGenotype::ConnectionSet::addConnection(float minBias, float maxBias,
 
 	// Automatically add nodes as needed
 	if (connection->_inIndex >= getNumNodes())
-		setNumNodes(connection->_inIndex + 1, minBias, maxBias, maxFunctions, generator);
+		setNumNodes(connection->_inIndex + 1, minBias, maxBias, functionChances, generator);
 
 	assert(connection->_outIndex >= 0);
 
 	// Automatically add nodes as needed. Not initialized until it has connections
 	if (connection->_outIndex >= getNumNodes())
-		setNumNodes(connection->_outIndex + 1, minBias, maxBias, maxFunctions, generator);
+		setNumNodes(connection->_outIndex + 1, minBias, maxBias, functionChances, generator);
 
 	// Node initialization: Initialize biases and innovation numbers if not already done so (no prior connections)
 	if (_nodes[connection->_inIndex]._connections.empty()) {
@@ -108,20 +108,20 @@ void NetworkGenotype::ConnectionSet::addConnection(float minBias, float maxBias,
 	_nodes[connection->_outIndex]._connections.push_back(connection);
 }
 
-void NetworkGenotype::ConnectionSet::addConnectionKnown(float bias1, float bias2, int function1, int function2, float minBias, float maxBias, int maxFunctions, const std::shared_ptr<ConnectionGene> &connection, InnovationNumberType innovationNumber1, InnovationNumberType innovationNumber2, std::mt19937 &generator) {
+void NetworkGenotype::ConnectionSet::addConnectionKnown(float bias1, float bias2, int function1, int function2, float minBias, float maxBias, const std::vector<float> &functionChances, const std::shared_ptr<ConnectionGene> &connection, InnovationNumberType innovationNumber1, InnovationNumberType innovationNumber2, std::mt19937 &generator) {
 	_connections.push_back(connection);
 
 	assert(connection->_inIndex >= 0);
 
 	// Automatically add nodes as needed
 	if (connection->_inIndex >= getNumNodes())
-		setNumNodes(connection->_inIndex + 1, minBias, maxBias, maxFunctions, generator);
+		setNumNodes(connection->_inIndex + 1, minBias, maxBias, functionChances, generator);
 
 	assert(connection->_outIndex >= 0);
 
 	// Automatically add nodes as needed. Not initialized until it has connections
 	if (connection->_outIndex >= getNumNodes())
-		setNumNodes(connection->_outIndex + 1, minBias, maxBias, maxFunctions, generator);
+		setNumNodes(connection->_outIndex + 1, minBias, maxBias, functionChances, generator);
 
 	// Node initialization: Initialize biases and innovation numbers if not already done so (no prior connections)
 	if (_nodes[connection->_inIndex]._connections.empty()) {
@@ -228,7 +228,29 @@ void NetworkGenotype::removeUnusedNodes() {
 	}
 }
 
-void NetworkGenotype::ConnectionSet::addNodes(int numNodes, float minBias, float maxBias, int maxFunctions, std::mt19937 &generator) {
+int NetworkGenotype::rouletteSelectIndex(const std::vector<float> &functionChances, std::mt19937 &generator) {
+	float chanceSum = 0.0f;
+
+	for (size_t i = 0; i < functionChances.size(); i++)
+		chanceSum += functionChances[i];
+
+	std::uniform_real_distribution<float> dist01(0.0f, 1.0f);
+
+	float randomCusp = dist01(generator) * chanceSum;
+
+	float sumSoFar = 0.0f;
+
+	for (size_t i = 0; i < functionChances.size(); i++) {
+		sumSoFar += functionChances[i];
+
+		if (sumSoFar > randomCusp)
+			return i;
+	}
+
+	return 0;
+}
+
+void NetworkGenotype::ConnectionSet::addNodes(int numNodes, float minBias, float maxBias, const std::vector<float> &functionChances, std::mt19937 &generator) {
 	assert(_nodes.size() + numNodes >= 0);
 
 	size_t originalSize = _nodes.size();
@@ -236,28 +258,26 @@ void NetworkGenotype::ConnectionSet::addNodes(int numNodes, float minBias, float
 	_nodes.resize(_nodes.size() + numNodes);
 
 	std::uniform_real_distribution<float> biasDist(minBias, maxBias);
-	std::uniform_int_distribution<int> functionDist(0, maxFunctions - 1);
 
 	for (size_t i = originalSize; i < _nodes.size(); i++) {
 		_nodes[i]._bias = biasDist(generator);
 
-		_nodes[i]._activationFunctionIndex = functionDist(generator);
+		_nodes[i]._activationFunctionIndex = rouletteSelectIndex(functionChances, generator);
 	}
 }
 
-void NetworkGenotype::ConnectionSet::setNumNodes(size_t numNodes, float minBias, float maxBias, int maxFunctions, std::mt19937 &generator) {
+void NetworkGenotype::ConnectionSet::setNumNodes(size_t numNodes, float minBias, float maxBias, const std::vector<float> &functionChances, std::mt19937 &generator) {
 	size_t originalSize = _nodes.size();
 
 	_nodes.resize(numNodes);
 
 	if (numNodes > originalSize) {
 		std::uniform_real_distribution<float> biasDist(minBias, maxBias);
-		std::uniform_int_distribution<int> functionDist(0, maxFunctions - 1);
 
 		for (size_t i = originalSize; i < _nodes.size(); i++) {
 			_nodes[i]._bias = biasDist(generator);
 
-			_nodes[i]._activationFunctionIndex = functionDist(generator);
+			_nodes[i]._activationFunctionIndex = rouletteSelectIndex(functionChances, generator);
 		}
 	}
 }
@@ -309,7 +329,7 @@ NetworkGenotype::NetworkGenotype()
 _numInputs(0) // Used to see if was initialized
 {}
 
-void NetworkGenotype::initialize(size_t numInputs, size_t numOutputs, float minWeight, float maxWeight, float minBias, float maxBias, int maxFunctions, InnovationNumberType &innovationNumber, std::mt19937 &generator) {
+void NetworkGenotype::initialize(size_t numInputs, size_t numOutputs, float minWeight, float maxWeight, float minBias, float maxBias, const std::vector<float> &functionChances, InnovationNumberType &innovationNumber, std::mt19937 &generator) {
 	assert(numInputs > 0);
 	assert(numOutputs > 0);
 
@@ -319,7 +339,7 @@ void NetworkGenotype::initialize(size_t numInputs, size_t numOutputs, float minW
 	_numHidden = 0;
 	_numOutputs = numOutputs;
 
-	_connectionSet.setNumNodes(_numInputs + _numOutputs, minBias, maxBias, maxFunctions, generator);
+	_connectionSet.setNumNodes(_numInputs + _numOutputs, minBias, maxBias, functionChances, generator);
 
 	std::uniform_real_distribution<float> biasDist(minBias, maxBias);
 
@@ -342,7 +362,7 @@ void NetworkGenotype::initialize(size_t numInputs, size_t numOutputs, float minW
 
 		innovationNumber++;
 
-		_connectionSet.addConnection(minBias, maxBias, maxFunctions, connection, innovationNumber, generator);
+		_connectionSet.addConnection(minBias, maxBias, functionChances, connection, innovationNumber, generator);
 	}
 }
 
@@ -403,17 +423,16 @@ void NetworkGenotype::mutatePerturbWeightClamped(float perturbationChance, float
 		_connectionSet._nodes[i]._bias = std::min(maxBias, std::max(minBias, _connectionSet._nodes[i]._bias));
 }
 
-void NetworkGenotype::mutateChangeFunction(float changeChance, int maxFunctions, std::mt19937 &generator) {
+void NetworkGenotype::mutateChangeFunction(float changeChance, const std::vector<float> &functionChances, std::mt19937 &generator) {
 	std::uniform_real_distribution<float> dist01(0.0f, 1.0f);
-	std::uniform_int_distribution<int> functionDist(0, maxFunctions - 1);
 
 	for (size_t i = 0; i < _connectionSet._nodes.size(); i++) {
 		if (dist01(generator) < changeChance)
-			_connectionSet._nodes[i]._activationFunctionIndex = functionDist(generator);
+			_connectionSet._nodes[i]._activationFunctionIndex = rouletteSelectIndex(functionChances, generator);
 	}
 }
 
-bool NetworkGenotype::mutateAddConnection(float minWeight, float maxWeight, float minBias, float maxBias, int maxFunctions, InnovationNumberType &innovationNumber, std::mt19937 &generator) {
+bool NetworkGenotype::mutateAddConnection(float minWeight, float maxWeight, float minBias, float maxBias, const std::vector<float> &functionChances, InnovationNumberType &innovationNumber, std::mt19937 &generator) {
 	assert(_numInputs > 0); // Check to make sure that the genotype was created
 
 	// Takes two unconnected nodes and makes a connection between them.
@@ -505,12 +524,12 @@ bool NetworkGenotype::mutateAddConnection(float minWeight, float maxWeight, floa
 
 	innovationNumber++;
 
-	_connectionSet.addConnection(minBias, maxBias, maxFunctions, connection, innovationNumber, generator);
+	_connectionSet.addConnection(minBias, maxBias, functionChances, connection, innovationNumber, generator);
 
 	return true;
 }
 
-void NetworkGenotype::mutateAddNode(float minWeight, float maxWeight, float minBias, float maxBias, int maxFunctions, InnovationNumberType &innovationNumber, std::mt19937 &generator) {
+void NetworkGenotype::mutateAddNode(float minWeight, float maxWeight, float minBias, float maxBias, const std::vector<float> &functionChances, InnovationNumberType &innovationNumber, std::mt19937 &generator) {
 	assert(_numInputs > 0); // Check to make sure that the genotype was created
 
 	_numHidden++;
@@ -544,7 +563,7 @@ void NetworkGenotype::mutateAddNode(float minWeight, float maxWeight, float minB
 
 	innovationNumber++;
 
-	_connectionSet.addConnection(minBias, maxBias, maxFunctions, connection1, innovationNumber, generator);
+	_connectionSet.addConnection(minBias, maxBias, functionChances, connection1, innovationNumber, generator);
 
 	// Second new connection (not reusing the old one)
 	std::shared_ptr<ConnectionGene> connection2(new ConnectionGene());
@@ -559,10 +578,10 @@ void NetworkGenotype::mutateAddNode(float minWeight, float maxWeight, float minB
 
 	innovationNumber++;
 
-	_connectionSet.addConnection(minBias, maxBias, maxFunctions, connection2, innovationNumber, generator);
+	_connectionSet.addConnection(minBias, maxBias, functionChances, connection2, innovationNumber, generator);
 }
 
-void NetworkGenotype::crossover(const NetworkGenotype &otherParent, NetworkGenotype &child, float disableGeneChance, float fitnessForThis, float fitnessForOtherParent, float minBias, float maxBias, int maxFunctions, std::mt19937 &generator) {
+void NetworkGenotype::crossover(const NetworkGenotype &otherParent, NetworkGenotype &child, float disableGeneChance, float fitnessForThis, float fitnessForOtherParent, float minBias, float maxBias, const std::vector<float> &functionChances, std::mt19937 &generator) {
 #ifdef DEBUG
 	for (size_t i = 0, numConnections = _connectionSet.GetNumConnections(); i < numConnections; i++)
 		assert(_connectionSet._connections[i]->_outIndex >= _numInputs);
@@ -650,7 +669,7 @@ void NetworkGenotype::crossover(const NetworkGenotype &otherParent, NetworkGenot
 			pSelected->_connectionSet._nodes[connection->_outIndex]._bias, 
 			pSelected->_connectionSet._nodes[connection->_inIndex]._activationFunctionIndex,
 			pSelected->_connectionSet._nodes[connection->_outIndex]._activationFunctionIndex,
-			minBias, maxBias, maxFunctions,
+			minBias, maxBias, functionChances,
 			connection,
 			pSelected->_connectionSet._nodes[connection->_inIndex]._innovationNumber,
 			pSelected->_connectionSet._nodes[connection->_outIndex]._innovationNumber,
@@ -685,7 +704,7 @@ void NetworkGenotype::crossover(const NetworkGenotype &otherParent, NetworkGenot
 				_connectionSet._nodes[connection->_outIndex]._bias, 
 				_connectionSet._nodes[connection->_inIndex]._activationFunctionIndex,
 				_connectionSet._nodes[connection->_outIndex]._activationFunctionIndex,
-				minBias, maxBias, maxFunctions,
+				minBias, maxBias, functionChances,
 				connection,
 				_connectionSet._nodes[connection->_inIndex]._innovationNumber,
 				_connectionSet._nodes[connection->_outIndex]._innovationNumber,
@@ -712,7 +731,7 @@ void NetworkGenotype::crossover(const NetworkGenotype &otherParent, NetworkGenot
 				otherParent._connectionSet._nodes[connection->_outIndex]._bias, 
 				otherParent._connectionSet._nodes[connection->_inIndex]._activationFunctionIndex,
 				otherParent._connectionSet._nodes[connection->_outIndex]._activationFunctionIndex,
-				minBias, maxBias, maxFunctions,
+				minBias, maxBias, functionChances,
 				connection,
 				otherParent._connectionSet._nodes[connection->_inIndex]._innovationNumber,
 				otherParent._connectionSet._nodes[connection->_inIndex]._innovationNumber,
@@ -761,7 +780,7 @@ void NetworkGenotype::crossover(const NetworkGenotype &otherParent, NetworkGenot
 					_connectionSet._nodes[connection->_outIndex]._bias, 
 					_connectionSet._nodes[connection->_inIndex]._activationFunctionIndex,
 					_connectionSet._nodes[connection->_outIndex]._activationFunctionIndex,
-					minBias, maxBias, maxFunctions,
+					minBias, maxBias, functionChances,
 					connection,
 					_connectionSet._nodes[connection->_inIndex]._innovationNumber,
 					_connectionSet._nodes[connection->_inIndex]._innovationNumber,
@@ -795,7 +814,7 @@ void NetworkGenotype::crossover(const NetworkGenotype &otherParent, NetworkGenot
 					otherParent._connectionSet._nodes[connection->_outIndex]._bias, 
 					otherParent._connectionSet._nodes[connection->_inIndex]._activationFunctionIndex,
 					otherParent._connectionSet._nodes[connection->_outIndex]._activationFunctionIndex,
-					minBias, maxBias, maxFunctions,
+					minBias, maxBias, functionChances,
 					connection,
 					otherParent._connectionSet._nodes[connection->_inIndex]._innovationNumber,
 					otherParent._connectionSet._nodes[connection->_inIndex]._innovationNumber,
@@ -828,7 +847,7 @@ void NetworkGenotype::crossover(const NetworkGenotype &otherParent, NetworkGenot
 					otherParent._connectionSet._nodes[connection->_outIndex]._bias, 
 					otherParent._connectionSet._nodes[connection->_inIndex]._activationFunctionIndex,
 					otherParent._connectionSet._nodes[connection->_outIndex]._activationFunctionIndex,
-					minBias, maxBias, maxFunctions,
+					minBias, maxBias, functionChances,
 					connection,
 					otherParent._connectionSet._nodes[connection->_inIndex]._innovationNumber,
 					otherParent._connectionSet._nodes[connection->_inIndex]._innovationNumber,
@@ -853,7 +872,7 @@ void NetworkGenotype::crossover(const NetworkGenotype &otherParent, NetworkGenot
 					_connectionSet._nodes[connection->_outIndex]._bias, 
 					_connectionSet._nodes[connection->_inIndex]._activationFunctionIndex,
 					_connectionSet._nodes[connection->_outIndex]._activationFunctionIndex,
-					minBias, maxBias, maxFunctions,
+					minBias, maxBias, functionChances,
 					connection,
 					_connectionSet._nodes[connection->_inIndex]._innovationNumber,
 					_connectionSet._nodes[connection->_outIndex]._innovationNumber,
@@ -1092,7 +1111,7 @@ void NetworkGenotype::setNumInputs(size_t numInputs) {
 	updateNumHiddenNeurons();
 }
 
-void NetworkGenotype::setNumOutputs(size_t numOutputs, float minBias, float maxBias, int maxFunctions, std::mt19937 &generator) {
+void NetworkGenotype::setNumOutputs(size_t numOutputs, float minBias, float maxBias, const std::vector<float> &functionChances, std::mt19937 &generator) {
 #ifdef DEBUG
 	for (size_t i = 0, numConnections = _connectionSet.GetNumConnections(); i < numConnections; i++)
 		assert(_connectionSet._connections[i]->_outIndex >= _numInputs);
@@ -1145,7 +1164,7 @@ void NetworkGenotype::setNumOutputs(size_t numOutputs, float minBias, float maxB
 
 	_numOutputs = numOutputs;
 
-	_connectionSet.setNumNodes(_numInputs + _numHidden + _numOutputs, minBias, maxBias, maxFunctions, generator);
+	_connectionSet.setNumNodes(_numInputs + _numHidden + _numOutputs, minBias, maxBias, functionChances, generator);
 
 #ifdef DEBUG
 	for (size_t i = 0, numConnections = _connectionSet.GetNumConnections(); i < numConnections; i++)
@@ -1155,7 +1174,7 @@ void NetworkGenotype::setNumOutputs(size_t numOutputs, float minBias, float maxB
 	updateNumHiddenNeurons();
 }
 
-void NetworkGenotype::setNumInputsFullyConnect(size_t numInputs, float minWeight, float maxWeight, float minBias, float maxBias, int maxFunctions, InnovationNumberType &innovationNumber, std::mt19937 &generator) {
+void NetworkGenotype::setNumInputsFullyConnect(size_t numInputs, float minWeight, float maxWeight, float minBias, float maxBias, const std::vector<float> &functionChances, InnovationNumberType &innovationNumber, std::mt19937 &generator) {
 #ifdef DEBUG
 	for (size_t i = 0, numConnections = _connectionSet.GetNumConnections(); i < numConnections; i++)
 		assert(_connectionSet._connections[i]->_outIndex >= _numInputs);
@@ -1198,7 +1217,7 @@ void NetworkGenotype::setNumInputsFullyConnect(size_t numInputs, float minWeight
 
 			innovationNumber++;
 
-			_connectionSet.addConnection(minBias, maxBias, maxFunctions, connection, innovationNumber, generator);
+			_connectionSet.addConnection(minBias, maxBias, functionChances, connection, innovationNumber, generator);
 		}
 	}
 	else if (dNodes < 0) {
@@ -1263,7 +1282,7 @@ void NetworkGenotype::setNumInputsFullyConnect(size_t numInputs, float minWeight
 	updateNumHiddenNeurons();
 }
 
-void NetworkGenotype::setNumOutputsFullyConnect(size_t numOutputs, float minWeight, float maxWeight, float minBias, float maxBias, int maxFunctions, InnovationNumberType &innovationNumber, std::mt19937 &generator) {
+void NetworkGenotype::setNumOutputsFullyConnect(size_t numOutputs, float minWeight, float maxWeight, float minBias, float maxBias, const std::vector<float> &functionChances, InnovationNumberType &innovationNumber, std::mt19937 &generator) {
 #ifdef DEBUG
 	for (size_t i = 0, numConnections = _connectionSet.GetNumConnections(); i < numConnections; i++)
 		assert(_connectionSet._connections[i]->_outIndex >= _numInputs);
@@ -1297,7 +1316,7 @@ void NetworkGenotype::setNumOutputsFullyConnect(size_t numOutputs, float minWeig
 
 			innovationNumber++;
 
-			_connectionSet.addConnection(minBias, maxBias, maxFunctions, connection, innovationNumber, generator);
+			_connectionSet.addConnection(minBias, maxBias, functionChances, connection, innovationNumber, generator);
 		}
 	}
 	else if (dNodes < 0) {
@@ -1344,7 +1363,7 @@ void NetworkGenotype::setNumOutputsFullyConnect(size_t numOutputs, float minWeig
 
 	_numOutputs = numOutputs;
 
-	_connectionSet.setNumNodes(_numInputs + _numHidden + _numOutputs, minBias, maxBias, maxFunctions, generator);
+	_connectionSet.setNumNodes(_numInputs + _numHidden + _numOutputs, minBias, maxBias, functionChances, generator);
 
 #ifdef DEBUG
 	for (size_t i = 0, numConnections = _connectionSet.GetNumConnections(); i < numConnections; i++)
@@ -1354,7 +1373,7 @@ void NetworkGenotype::setNumOutputsFullyConnect(size_t numOutputs, float minWeig
 	updateNumHiddenNeurons();
 }
 
-void NetworkGenotype::connectUnconnectedInputs(float minWeight, float maxWeight, float minBias, float maxBias, int maxFunctions, InnovationNumberType &innovationNumber, std::mt19937 &generator) {
+void NetworkGenotype::connectUnconnectedInputs(float minWeight, float maxWeight, float minBias, float maxBias, const std::vector<float> &functionChances, InnovationNumberType &innovationNumber, std::mt19937 &generator) {
 	// ---------------------------------- Add "Missing" Connections for Inputs and Outputs ----------------------------------
 
 	const size_t numInputsHidden = _numInputs + _numHidden;
@@ -1378,12 +1397,12 @@ void NetworkGenotype::connectUnconnectedInputs(float minWeight, float maxWeight,
 
 		innovationNumber++;
 
-		_connectionSet.addConnection(minBias, maxBias, maxFunctions, connection, innovationNumber, generator);
+		_connectionSet.addConnection(minBias, maxBias, functionChances, connection, innovationNumber, generator);
 	}
 }
 
 
-void NetworkGenotype::connectUnconnectedOutputs(float minWeight, float maxWeight, float minBias, float maxBias, int maxFunctions, InnovationNumberType &innovationNumber, std::mt19937 &generator) {
+void NetworkGenotype::connectUnconnectedOutputs(float minWeight, float maxWeight, float minBias, float maxBias, const std::vector<float> &functionChances, InnovationNumberType &innovationNumber, std::mt19937 &generator) {
 	// ---------------------------------- Add "Missing" Connections for Inputs and Outputs ----------------------------------
 
 	const size_t numInputsHidden = _numInputs + _numHidden;
@@ -1411,7 +1430,7 @@ void NetworkGenotype::connectUnconnectedOutputs(float minWeight, float maxWeight
 
 			innovationNumber++;
 
-			_connectionSet.addConnection(minBias, maxBias, maxFunctions, connection, innovationNumber, generator);
+			_connectionSet.addConnection(minBias, maxBias, functionChances, connection, innovationNumber, generator);
 		}
 	}
 }

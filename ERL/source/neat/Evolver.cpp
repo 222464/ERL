@@ -77,10 +77,10 @@ void Evolver::clearPopulation() {
 	_population.clear();
 }
 
-void Evolver::initialize(size_t numInputs, size_t numOutputs, int maxFunctions, std::shared_ptr<class ParentSelector> selector, std::mt19937 &generator, std::shared_ptr<NetworkGenotype>(*pGenotypeFactory)()) {
+void Evolver::initialize(size_t numInputs, size_t numOutputs, const std::vector<float> &functionChances, std::shared_ptr<class ParentSelector> selector, std::mt19937 &generator, std::shared_ptr<NetworkGenotype>(*pGenotypeFactory)()) {
 	clearPopulation();
 
-	_maxFunctions = maxFunctions;
+	_functionChances = functionChances;
 
 	_selector = selector;
 
@@ -95,7 +95,7 @@ void Evolver::initialize(size_t numInputs, size_t numOutputs, int maxFunctions, 
 		// Generate new gene
 		std::shared_ptr<NetworkGenotype> newGenotype = _pGenotypeFactory();
 
-		newGenotype->initialize(numInputs, numOutputs, _settings._minInitWeight, _settings._maxInitWeight, _settings._minInitBias, _settings._maxInitBias, maxFunctions, _innovationNumber, generator);
+		newGenotype->initialize(numInputs, numOutputs, _settings._minInitWeight, _settings._maxInitWeight, _settings._minInitBias, _settings._maxInitBias, functionChances, _innovationNumber, generator);
 		newGenotype->initializeAdditional(numInputs, numOutputs, _settings._minInitWeight, _settings._maxInitWeight, _settings._minInitBias, _settings._maxInitBias, _innovationNumber, generator);
 
 		_population[i]._genotype = newGenotype;
@@ -156,7 +156,7 @@ void Evolver::epoch(std::mt19937 &generator) {
 		_population[parentIndex1]._genotype->crossover(*_population[parentIndex2]._genotype,
 			*child, _settings._disableGeneChance,
 			_population[parentIndex1]._fitness, _population[parentIndex2]._fitness, 
-			_settings._minBias, _settings._maxBias, _maxFunctions,
+			_settings._minBias, _settings._maxBias, _functionChances,
 			generator);
 
 		child->crossoverAdditional(*_population[parentIndex2]._genotype,
@@ -164,14 +164,14 @@ void Evolver::epoch(std::mt19937 &generator) {
 			_population[parentIndex1]._fitness, _population[parentIndex2]._fitness, generator);
 
 		if (dist01(generator) < _settings._newNodeMutationRate)
-			child->mutateAddNode(_settings._minWeight, _settings._maxWeight, _settings._minBias, _settings._maxBias, _maxFunctions, _innovationNumber, generator);
+			child->mutateAddNode(_settings._minWeight, _settings._maxWeight, _settings._minBias, _settings._maxBias, _functionChances, _innovationNumber, generator);
 
 		if (dist01(generator) < _settings._newConnectionMutationRate)
-			child->mutateAddConnection(_settings._minWeight, _settings._maxWeight, _settings._minBias, _settings._maxBias, _maxFunctions, _innovationNumber, generator);
+			child->mutateAddConnection(_settings._minWeight, _settings._maxWeight, _settings._minBias, _settings._maxBias, _functionChances, _innovationNumber, generator);
 
 		child->mutatePerturbWeight(_settings._weightPerturbationChance, _settings._maxPerturbation, generator);
 
-		child->mutateChangeFunction(_settings._changeFunctionChance, _maxFunctions, generator);
+		child->mutateChangeFunction(_settings._changeFunctionChance, _functionChances, generator);
 
 		child->mutateAdditional(_innovationNumber, _settings._maxPerturbation, _settings._minWeight, _settings._maxWeight, _settings._minBias, _settings._maxBias, _innovationNumber, generator);
 

@@ -70,12 +70,12 @@ namespace neat {
 
 			ConnectionSet &operator=(const ConnectionSet &other);
 
-			void addConnection(float minBias, float maxBias, int maxFunctions, const std::shared_ptr<ConnectionGene> &connection, InnovationNumberType &innovationNumber, std::mt19937 &generator);
-			void addConnectionKnown(float bias1, float bias2, int function1, int function2, float minBias, float maxBias, int maxFunctions, const std::shared_ptr<ConnectionGene> &connection, InnovationNumberType innovationNumber1, InnovationNumberType innovationNumber2, std::mt19937 &generator);
+			void addConnection(float minBias, float maxBias, const std::vector<float> &functionChances, const std::shared_ptr<ConnectionGene> &connection, InnovationNumberType &innovationNumber, std::mt19937 &generator);
+			void addConnectionKnown(float bias1, float bias2, int function1, int function2, float minBias, float maxBias, const std::vector<float> &functionChances, const std::shared_ptr<ConnectionGene> &connection, InnovationNumberType innovationNumber1, InnovationNumberType innovationNumber2, std::mt19937 &generator);
 			void removeConnections();
 
-			void addNodes(int numNodes, float minBias, float maxBias, int maxFunctions, std::mt19937 &generator);
-			void setNumNodes(size_t numNodes, float minBias, float maxBias, int maxFunctions, std::mt19937 &generator);
+			void addNodes(int numNodes, float minBias, float maxBias, const std::vector<float> &functionChances, std::mt19937 &generator);
+			void setNumNodes(size_t numNodes, float minBias, float maxBias, const std::vector<float> &functionChances, std::mt19937 &generator);
 
 			size_t getNumNodes() const {
 				return _nodes.size();
@@ -91,23 +91,25 @@ namespace neat {
 
 		void removeUnusedNodes();
 
+		static int rouletteSelectIndex(const std::vector<float> &functionChances, std::mt19937 &generator);
+
 	public:
 		bool _allowSelfConnections;
 
 		NetworkGenotype();
 
 		// For initializing starting genes
-		void initialize(size_t numInputs, size_t numOutputs, float minWeight, float maxWeight, float minBias, float maxBias, int maxFunctions, InnovationNumberType &innovationNumber, std::mt19937 &generator); // Automatically increments innovation number
+		void initialize(size_t numInputs, size_t numOutputs, float minWeight, float maxWeight, float minBias, float maxBias, const std::vector<float> &functionChances, InnovationNumberType &innovationNumber, std::mt19937 &generator); // Automatically increments innovation number
 
 		void updateNumHiddenNeurons();
 
 		void mutatePerturbWeight(float perturbationChance, float maxPerturbation, std::mt19937 &generator);
 		void mutatePerturbWeightClamped(float perturbationChance, float maxPerturbation, float minWeight, float maxWeight, float minBias, float maxBias, std::mt19937 &generator);
-		void mutateChangeFunction(float changeChance, int maxFunctions, std::mt19937 &generator);
-		bool mutateAddConnection(float minWeight, float maxWeight, float minBias, float maxBias, int maxFunctions, InnovationNumberType &innovationNumber, std::mt19937 &generator); // Automatically increments innovation number. Returns false if cannot add connection
-		void mutateAddNode(float minWeight, float maxWeight, float minBias, float maxBias, int maxFunctions, InnovationNumberType &innovationNumber, std::mt19937 &generator); // Automatically increments innovation number
+		void mutateChangeFunction(float changeChance, const std::vector<float> &functionChances, std::mt19937 &generator);
+		bool mutateAddConnection(float minWeight, float maxWeight, float minBias, float maxBias, const std::vector<float> &functionChances, InnovationNumberType &innovationNumber, std::mt19937 &generator); // Automatically increments innovation number. Returns false if cannot add connection
+		void mutateAddNode(float minWeight, float maxWeight, float minBias, float maxBias, const std::vector<float> &functionChances, InnovationNumberType &innovationNumber, std::mt19937 &generator); // Automatically increments innovation number
 
-		void crossover(const NetworkGenotype &otherParent, NetworkGenotype &child, float disableGeneChance, float fitnessForThis, float fitnessForOtherParent, float minBias, float maxBias, int maxFunctions, std::mt19937 &generator); // Keeps parents, creates new child
+		void crossover(const NetworkGenotype &otherParent, NetworkGenotype &child, float disableGeneChance, float fitnessForThis, float fitnessForOtherParent, float minBias, float maxBias, const std::vector<float> &functionChances, std::mt19937 &generator); // Keeps parents, creates new child
 
 		float getSimilarity(const NetworkGenotype &other, float excessFactor, float disjointFactor, float averageWeightDifferenceFactor, float inputCountDifferenceFactor, float outputCountDifferenceFactor, float activationFunctionFactor);
 
@@ -117,12 +119,12 @@ namespace neat {
 		virtual float getSimilarityAdditional(const NetworkGenotype &other, float excessFactor, float disjointFactor, float averageWeightDifferenceFactor, float inputCountDifferenceFactor, float outputCountDifferenceFactor, float activationFunctionFactor) { return 0.0f; }
 
 		void setNumInputs(size_t numInputs);
-		void setNumOutputs(size_t numOutputs, float minBias, float maxBias, int maxFunctions, std::mt19937 &generator);
-		void setNumInputsFullyConnect(size_t numInputs, float minWeight, float maxWeight, float minBias, float maxBias, int maxFunctions, InnovationNumberType &innovationNumber, std::mt19937 &generator);
-		void setNumOutputsFullyConnect(size_t numOutputs, float minWeight, float maxWeight, float minBias, float maxBias, int maxFunctions, InnovationNumberType &innovationNumber, std::mt19937 &generator);
+		void setNumOutputs(size_t numOutputs, float minBias, float maxBias, const std::vector<float> &functionChances, std::mt19937 &generator);
+		void setNumInputsFullyConnect(size_t numInputs, float minWeight, float maxWeight, float minBias, float maxBias, const std::vector<float> &functionChances, InnovationNumberType &innovationNumber, std::mt19937 &generator);
+		void setNumOutputsFullyConnect(size_t numOutputs, float minWeight, float maxWeight, float minBias, float maxBias, const std::vector<float> &functionChances, InnovationNumberType &innovationNumber, std::mt19937 &generator);
 
-		void connectUnconnectedInputs(float minWeight, float maxWeight, float minBias, float maxBias, int maxFunctions, InnovationNumberType &innovationNumber, std::mt19937 &generator);
-		void connectUnconnectedOutputs(float minWeight, float maxWeight, float minBias, float maxBias, int maxFunctions, InnovationNumberType &innovationNumber, std::mt19937 &generator);
+		void connectUnconnectedInputs(float minWeight, float maxWeight, float minBias, float maxBias, const std::vector<float> &functionChances, InnovationNumberType &innovationNumber, std::mt19937 &generator);
+		void connectUnconnectedOutputs(float minWeight, float maxWeight, float minBias, float maxBias, const std::vector<float> &functionChances, InnovationNumberType &innovationNumber, std::mt19937 &generator);
 
 		int getNumUnconnectedInputs() const;
 		int getNumUnconnectedOutputs() const;
