@@ -17,6 +17,8 @@
 	2. Altered source versions must be plainly marked as such, and must not be
 		misrepresented as being the original software.
 	3. This notice may not be removed or altered from any source distribution.
+
+	This version of the NEAT Visualizer has been modified for ERL to include different activation functions (CPPN)
 */
 
 #include <neat/Evolver.h>
@@ -45,11 +47,13 @@ _maxWeight(8.0f),
 _minBias(-8.0f),
 _maxBias(8.0f),
 _maxPerturbation(0.75f),
+_changeFunctionChance(0.05f),
 _excessFactor(1.0f),
 _disjointFactor(1.0f),
 _averageWeightDifferenceFactor(0.4f),
 _inputCountDifferenceFactor(1.5f),
 _outputCountDifferenceFactor(1.5f),
+_functionFactor(3.0f),
 _populationSize(40),
 _numElites(6)
 {}
@@ -73,8 +77,10 @@ void Evolver::clearPopulation() {
 	_population.clear();
 }
 
-void Evolver::initialize(size_t numInputs, size_t numOutputs, std::shared_ptr<class ParentSelector> selector, std::mt19937 &generator, std::shared_ptr<NetworkGenotype>(*pGenotypeFactory)()) {
+void Evolver::initialize(size_t numInputs, size_t numOutputs, int maxFunctions, std::shared_ptr<class ParentSelector> selector, std::mt19937 &generator, std::shared_ptr<NetworkGenotype>(*pGenotypeFactory)()) {
 	clearPopulation();
+
+	_maxFunctions = maxFunctions;
 
 	_selector = selector;
 
@@ -89,7 +95,7 @@ void Evolver::initialize(size_t numInputs, size_t numOutputs, std::shared_ptr<cl
 		// Generate new gene
 		std::shared_ptr<NetworkGenotype> newGenotype = _pGenotypeFactory();
 
-		newGenotype->initialize(numInputs, numOutputs, _settings._minInitWeight, _settings._maxInitWeight, _settings._minInitBias, _settings._maxInitBias, _innovationNumber, generator);
+		newGenotype->initialize(numInputs, numOutputs, _settings._minInitWeight, _settings._maxInitWeight, _settings._minInitBias, _settings._maxInitBias, maxFunctions, _innovationNumber, generator);
 		newGenotype->initializeAdditional(numInputs, numOutputs, _settings._minInitWeight, _settings._maxInitWeight, _settings._minInitBias, _settings._maxInitBias, _innovationNumber, generator);
 
 		_population[i]._genotype = newGenotype;
@@ -149,19 +155,23 @@ void Evolver::epoch(std::mt19937 &generator) {
 
 		_population[parentIndex1]._genotype->crossover(*_population[parentIndex2]._genotype,
 			*child, _settings._disableGeneChance,
-			_population[parentIndex1]._fitness, _population[parentIndex2]._fitness, generator);
+			_population[parentIndex1]._fitness, _population[parentIndex2]._fitness, 
+			_settings._minBias, _settings._maxBias, _maxFunctions,
+			generator);
 
 		child->crossoverAdditional(*_population[parentIndex2]._genotype,
 			*child, _settings._disableGeneChance,
 			_population[parentIndex1]._fitness, _population[parentIndex2]._fitness, generator);
 
 		if (dist01(generator) < _settings._newNodeMutationRate)
-			child->mutateAddNode(_settings._minWeight, _settings._maxWeight, _settings._minBias, _settings._maxBias, _innovationNumber, generator);
+			child->mutateAddNode(_settings._minWeight, _settings._maxWeight, _settings._minBias, _settings._maxBias, _maxFunctions, _innovationNumber, generator);
 
 		if (dist01(generator) < _settings._newConnectionMutationRate)
-			child->mutateAddConnection(_settings._minWeight, _settings._maxWeight, _settings._minBias, _settings._maxBias, _innovationNumber, generator);
+			child->mutateAddConnection(_settings._minWeight, _settings._maxWeight, _settings._minBias, _settings._maxBias, _maxFunctions, _innovationNumber, generator);
 
 		child->mutatePerturbWeight(_settings._weightPerturbationChance, _settings._maxPerturbation, generator);
+
+		child->mutateChangeFunction(_settings._changeFunctionChance, _maxFunctions, generator);
 
 		child->mutateAdditional(_innovationNumber, _settings._maxPerturbation, _settings._minWeight, _settings._maxWeight, _settings._minBias, _settings._maxBias, _innovationNumber, generator);
 

@@ -17,6 +17,8 @@
 	2. Altered source versions must be plainly marked as such, and must not be
 		misrepresented as being the original software.
 	3. This notice may not be removed or altered from any source distribution.
+
+	This version of the NEAT Visualizer has been modified for ERL to include different activation functions (CPPN)
 */
 
 #include <neat/Neuron.h>
@@ -32,12 +34,14 @@ Neuron::Neuron()
 {}
 
 void Neuron::update(NetworkPhenotype &phenotype) {
+	assert(_activationFunction != nullptr);
+
 	float sum = _bias;
 	
 	for (size_t i = 0; i < _inputs.size(); i++)
 		sum += phenotype.getNeuronInputNode(_inputs[i]._inputOffset)._output * _inputs[i]._weight;
 
-	_output = sigmoid(sum * phenotype._activationMultiplier);
+	_output = _activationFunction(sum * phenotype._activationMultiplier);
 }
 
 std::ostream &operator<<(std::ostream &os, Neuron &neuron) {

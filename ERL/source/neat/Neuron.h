@@ -17,6 +17,8 @@
 	2. Altered source versions must be plainly marked as such, and must not be
 		misrepresented as being the original software.
 	3. This notice may not be removed or altered from any source distribution.
+
+	This version of the NEAT Visualizer has been modified for ERL to include different activation functions (CPPN)
 */
 
 #pragma once
@@ -25,6 +27,7 @@
 
 #include <vector>
 #include <ostream>
+#include <functional>
 #include <assert.h>
 
 namespace neat {
@@ -43,6 +46,8 @@ namespace neat {
 		std::vector<Synapse> _inputs;
 
 		float _bias;
+
+		std::function<float(float)> _activationFunction;
 
 		Neuron();
 

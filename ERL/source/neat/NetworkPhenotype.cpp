@@ -17,8 +17,9 @@
 	2. Altered source versions must be plainly marked as such, and must not be
 		misrepresented as being the original software.
 	3. This notice may not be removed or altered from any source distribution.
-*/
 
+	This version of the NEAT Visualizer has been modified for ERL to include different activation functions (CPPN)
+*/
 #include <neat/NetworkPhenotype.h>
 
 #include <assert.h>
@@ -55,7 +56,11 @@ Neuron &NetworkPhenotype::getNeuronNode(size_t index) {
 	return _hidden[index - _inputs.size()];
 }
 
-void NetworkPhenotype::create(size_t numInputs, size_t numOutputs, const std::vector<std::shared_ptr<ConnectionGene>> &connections, size_t numHidden) {
+void NetworkPhenotype::create(const NetworkGenotype &genotype, const std::vector<std::function<float(float)>> &activationFunctions) {
+	size_t numInputs = genotype.getNumInputs();
+	size_t numHidden = genotype.getNumHidden();
+	size_t numOutputs = genotype.getNumOutputs();
+
 	// Clear existing data, if there is any
 	_inputs.clear();
 	_hidden.clear();
@@ -69,24 +74,28 @@ void NetworkPhenotype::create(size_t numInputs, size_t numOutputs, const std::ve
 	const size_t numUnits = numInputs + numHidden + numOutputs;
 
 	// Connect neurons
-	for (size_t i = 0, size = connections.size(); i < size; i++) {
-		if (!connections[i]->_enabled) // Skip disabled genes
+	for (size_t i = 0; i < genotype.getConnectionSet().size(); i++) {
+		if (!genotype.getConnectionSet()[i]->_enabled) // Skip disabled genes
 			continue;
 
 		// Cannot have an output to a input
-		if (connections[i]->_outIndex < _inputs.size() || connections[i]->_outIndex >= numUnits)
+		if (genotype.getConnectionSet()[i]->_outIndex < _inputs.size() || genotype.getConnectionSet()[i]->_outIndex >= numUnits)
 			continue;
 
 		Neuron::Synapse newSynapse;
-		newSynapse._inputOffset = connections[i]->_inIndex;
-		newSynapse._weight = connections[i]->_weight;
+		newSynapse._inputOffset = genotype.getConnectionSet()[i]->_inIndex;
+		newSynapse._weight = genotype.getConnectionSet()[i]->_weight;
 
-		getNeuronNode(connections[i]->_outIndex)._inputs.push_back(newSynapse);
+		getNeuronNode(genotype.getConnectionSet()[i]->_outIndex)._inputs.push_back(newSynapse);
 	}
-}
 
-void NetworkPhenotype::create(const NetworkGenotype &genotype) {
-	create(genotype.getNumInputs(), genotype.getNumOutputs(), genotype.getConnectionSet(), genotype.getNumHidden());
+	// Set node data
+	for (size_t i = 0; i < genotype.getNodeDataSize(); i++) {
+		const NetworkGenotype::NodeData &data = genotype.getNodeData(i);
+
+		getNeuronNode(i)._activationFunction = activationFunctions[data._activationFunctionIndex];
+		getNeuronNode(i)._bias = data._bias;
+	}
 }
 
 void NetworkPhenotype::update() {

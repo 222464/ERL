@@ -17,6 +17,8 @@
 	2. Altered source versions must be plainly marked as such, and must not be
 		misrepresented as being the original software.
 	3. This notice may not be removed or altered from any source distribution.
+
+	This version of the NEAT Visualizer has been modified for ERL to include different activation functions (CPPN)
 */
 
 #pragma once
@@ -39,6 +41,7 @@ namespace neat {
 		float _minInitBias;
 		float _maxInitBias;
 		float _maxPerturbation;
+		float _changeFunctionChance;
 
 		float _minWeight;
 		float _maxWeight;
@@ -51,6 +54,7 @@ namespace neat {
 		float _averageWeightDifferenceFactor;
 		float _inputCountDifferenceFactor;
 		float _outputCountDifferenceFactor;
+		float _functionFactor;
 
 		size_t _populationSize;
 
@@ -62,6 +66,8 @@ namespace neat {
 	class Evolver {
 	private:
 		size_t _numInputs, _numOutputs;
+
+		size_t _maxFunctions;
 
 		std::shared_ptr<NetworkGenotype>(*_pGenotypeFactory)();
 
@@ -83,7 +89,7 @@ namespace neat {
 
 		Evolver();
 
-		void initialize(size_t numInputs, size_t numOutputs, std::shared_ptr<class ParentSelector> selector, std::mt19937 &generator, std::shared_ptr<NetworkGenotype>(*pGenotypeFactory)() = defaultGenotypeFactory);
+		void initialize(size_t numInputs, size_t numOutputs, int maxFunctions, std::shared_ptr<class ParentSelector> selector, std::mt19937 &generator, std::shared_ptr<NetworkGenotype>(*pGenotypeFactory)() = defaultGenotypeFactory);
 
 		void clearPopulation();
 

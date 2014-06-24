@@ -17,6 +17,8 @@
 	2. Altered source versions must be plainly marked as such, and must not be
 		misrepresented as being the original software.
 	3. This notice may not be removed or altered from any source distribution.
+
+	This version of the NEAT Visualizer has been modified for ERL to include different activation functions (CPPN)
 */
 
 #pragma once
@@ -47,8 +49,10 @@ namespace neat {
 
 			InnovationNumberType _innovationNumber;
 
+			int _activationFunctionIndex;
+
 			NodeData()
-				: _bias(0.0f), _innovationNumber(0)
+				: _bias(0.0f), _innovationNumber(0), _activationFunctionIndex(0)
 			{}
 		};
 
@@ -66,12 +70,12 @@ namespace neat {
 
 			ConnectionSet &operator=(const ConnectionSet &other);
 
-			void addConnection(float minBias, float maxBias, const std::shared_ptr<ConnectionGene> &connection, InnovationNumberType &innovationNumber, std::mt19937 &generator);
-			void addConnectionKnownBias(float bias1, float bias2, const std::shared_ptr<ConnectionGene> &connection, InnovationNumberType innovationNumber1, InnovationNumberType innovationNumber2);
+			void addConnection(float minBias, float maxBias, int maxFunctions, const std::shared_ptr<ConnectionGene> &connection, InnovationNumberType &innovationNumber, std::mt19937 &generator);
+			void addConnectionKnown(float bias1, float bias2, int function1, int function2, float minBias, float maxBias, int maxFunctions, const std::shared_ptr<ConnectionGene> &connection, InnovationNumberType innovationNumber1, InnovationNumberType innovationNumber2, std::mt19937 &generator);
 			void removeConnections();
 
-			void addNodes(int numNodes);
-			void setNumNodes(size_t numNodes);
+			void addNodes(int numNodes, float minBias, float maxBias, int maxFunctions, std::mt19937 &generator);
+			void setNumNodes(size_t numNodes, float minBias, float maxBias, int maxFunctions, std::mt19937 &generator);
 
 			size_t getNumNodes() const {
 				return _nodes.size();
@@ -93,31 +97,32 @@ namespace neat {
 		NetworkGenotype();
 
 		// For initializing starting genes
-		void initialize(size_t numInputs, size_t numOutputs, float minWeight, float maxWeight, float minBias, float maxBias, InnovationNumberType &innovationNumber, std::mt19937 &generator); // Automatically increments innovation number
+		void initialize(size_t numInputs, size_t numOutputs, float minWeight, float maxWeight, float minBias, float maxBias, int maxFunctions, InnovationNumberType &innovationNumber, std::mt19937 &generator); // Automatically increments innovation number
 
 		void updateNumHiddenNeurons();
 
 		void mutatePerturbWeight(float perturbationChance, float maxPerturbation, std::mt19937 &generator);
 		void mutatePerturbWeightClamped(float perturbationChance, float maxPerturbation, float minWeight, float maxWeight, float minBias, float maxBias, std::mt19937 &generator);
-		bool mutateAddConnection(float minWeight, float maxWeight, float minBias, float maxBias, InnovationNumberType &innovationNumber, std::mt19937 &generator); // Automatically increments innovation number. Returns false if cannot add connection
-		void mutateAddNode(float minWeight, float maxWeight, float minBias, float maxBias, InnovationNumberType &innovationNumber, std::mt19937 &generator); // Automatically increments innovation number
+		void mutateChangeFunction(float changeChance, int maxFunctions, std::mt19937 &generator);
+		bool mutateAddConnection(float minWeight, float maxWeight, float minBias, float maxBias, int maxFunctions, InnovationNumberType &innovationNumber, std::mt19937 &generator); // Automatically increments innovation number. Returns false if cannot add connection
+		void mutateAddNode(float minWeight, float maxWeight, float minBias, float maxBias, int maxFunctions, InnovationNumberType &innovationNumber, std::mt19937 &generator); // Automatically increments innovation number
 
-		void crossover(const NetworkGenotype &otherParent, NetworkGenotype &child, float disableGeneChance, float fitnessForThis, float fitnessForOtherParent, std::mt19937 &generator); // Keeps parents, creates new child
+		void crossover(const NetworkGenotype &otherParent, NetworkGenotype &child, float disableGeneChance, float fitnessForThis, float fitnessForOtherParent, float minBias, float maxBias, int maxFunctions, std::mt19937 &generator); // Keeps parents, creates new child
 
-		float getSimilarity(const NetworkGenotype &other, float excessFactor, float disjointFactor, float averageWeightDifferenceFactor, float inputCountDifferenceFactor, float outputCountDifferenceFactor);
+		float getSimilarity(const NetworkGenotype &other, float excessFactor, float disjointFactor, float averageWeightDifferenceFactor, float inputCountDifferenceFactor, float outputCountDifferenceFactor, float activationFunctionFactor);
 
 		virtual void initializeAdditional(size_t numInputs, size_t numOutputs, float minWeight, float maxWeight, float minBias, float maxBias, InnovationNumberType &innovationNumber, std::mt19937 &generator) {}
 		virtual void crossoverAdditional(const NetworkGenotype &otherParent, NetworkGenotype &child, float disableGeneChance, float fitnessForThis, float fitnessForOtherParent, std::mt19937 &generator) {}
 		virtual void mutateAdditional(float perturbationChance, float maxPerturbation, float minWeight, float maxWeight, float minBias, float maxBias, InnovationNumberType &innovationNumber, std::mt19937 &generator) {}
-		virtual float getSimilarityAdditional(const NetworkGenotype &other, float excessFactor, float disjointFactor, float averageWeightDifferenceFactor, float inputCountDifferenceFactor, float outputCountDifferenceFactor) { return 0.0f; }
+		virtual float getSimilarityAdditional(const NetworkGenotype &other, float excessFactor, float disjointFactor, float averageWeightDifferenceFactor, float inputCountDifferenceFactor, float outputCountDifferenceFactor, float activationFunctionFactor) { return 0.0f; }
 
 		void setNumInputs(size_t numInputs);
-		void setNumOutputs(size_t numOutputs);
-		void setNumInputsFullyConnect(size_t numInputs, float minWeight, float maxWeight, float minBias, float maxBias, InnovationNumberType &innovationNumber, std::mt19937 &generator);
-		void setNumOutputsFullyConnect(size_t numOutputs, float minWeight, float maxWeight, float minBias, float maxBias, InnovationNumberType &innovationNumber, std::mt19937 &generator);
+		void setNumOutputs(size_t numOutputs, float minBias, float maxBias, int maxFunctions, std::mt19937 &generator);
+		void setNumInputsFullyConnect(size_t numInputs, float minWeight, float maxWeight, float minBias, float maxBias, int maxFunctions, InnovationNumberType &innovationNumber, std::mt19937 &generator);
+		void setNumOutputsFullyConnect(size_t numOutputs, float minWeight, float maxWeight, float minBias, float maxBias, int maxFunctions, InnovationNumberType &innovationNumber, std::mt19937 &generator);
 
-		void connectUnconnectedInputs(float minWeight, float maxWeight, float minBias, float maxBias, InnovationNumberType &innovationNumber, std::mt19937 &generator);
-		void connectUnconnectedOutputs(float minWeight, float maxWeight, float minBias, float maxBias, InnovationNumberType &innovationNumber, std::mt19937 &generator);
+		void connectUnconnectedInputs(float minWeight, float maxWeight, float minBias, float maxBias, int maxFunctions, InnovationNumberType &innovationNumber, std::mt19937 &generator);
+		void connectUnconnectedOutputs(float minWeight, float maxWeight, float minBias, float maxBias, int maxFunctions, InnovationNumberType &innovationNumber, std::mt19937 &generator);
 
 		int getNumUnconnectedInputs() const;
 		int getNumUnconnectedOutputs() const;
@@ -140,6 +145,10 @@ namespace neat {
 
 		const NodeData &getNodeData(size_t index) const {
 			return _connectionSet._nodes[index];
+		}
+
+		size_t getNodeDataSize() const {
+			return _connectionSet._nodes.size();
 		}
 
 		void readFromStream(std::istream &is);

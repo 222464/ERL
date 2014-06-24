@@ -17,6 +17,8 @@
 	2. Altered source versions must be plainly marked as such, and must not be
 		misrepresented as being the original software.
 	3. This notice may not be removed or altered from any source distribution.
+
+	This version of the NEAT Visualizer has been modified for ERL to include different activation functions (CPPN)
 */
 
 #pragma once
@@ -26,6 +28,8 @@
 
 #include <vector>
 #include <memory>
+
+#include <functional>
 
 namespace neat {
 	class NetworkPhenotype {
@@ -44,8 +48,7 @@ namespace neat {
 		NeuronInput &getNeuronInputNode(size_t index);
 		Neuron &getNeuronNode(size_t index);
 
-		void create(size_t numInputs, size_t numOutputs, const std::vector<std::shared_ptr<ConnectionGene>> &connections, size_t numHidden);
-		void create(const NetworkGenotype &genotype);
+		void create(const NetworkGenotype &genotype, const std::vector<std::function<float(float)>> &activationFunctions);
 
 		void update();
 

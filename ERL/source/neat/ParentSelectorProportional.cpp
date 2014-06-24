@@ -17,6 +17,8 @@
 	2. Altered source versions must be plainly marked as such, and must not be
 		misrepresented as being the original software.
 	3. This notice may not be removed or altered from any source distribution.
+
+	This version of the NEAT Visualizer has been modified for ERL to include different activation functions (CPPN)
 */
 
 #include <neat/ParentSelectorProportional.h>
@@ -77,7 +79,7 @@ void ParentSelectorProportional::select(struct EvolverSettings* pSettings, const
 	fitnessSum = 0.0f;
 
 	size_t minDisimilarityIndex = 0;
-	float minDisimilarity = pool[parentIndex1]._genotype->getSimilarity(*pool[minDisimilarityIndex]._genotype, pSettings->_excessFactor, pSettings->_disjointFactor, pSettings->_averageWeightDifferenceFactor, pSettings->_inputCountDifferenceFactor, pSettings->_outputCountDifferenceFactor);
+	float minDisimilarity = pool[parentIndex1]._genotype->getSimilarity(*pool[minDisimilarityIndex]._genotype, pSettings->_excessFactor, pSettings->_disjointFactor, pSettings->_averageWeightDifferenceFactor, pSettings->_inputCountDifferenceFactor, pSettings->_outputCountDifferenceFactor, pSettings->_functionFactor);
 
 	size_t numCompatibleChoose = static_cast<size_t>(_numCompatibleChooseRatio * static_cast<float>(poolSize));
 
@@ -85,7 +87,7 @@ void ParentSelectorProportional::select(struct EvolverSettings* pSettings, const
 		if (i == parentIndex1)
 			continue;
 
-		float disimilarity = pool[parentIndex1]._genotype->getSimilarity(*pool[i]._genotype, pSettings->_excessFactor, pSettings->_disjointFactor, pSettings->_averageWeightDifferenceFactor, pSettings->_inputCountDifferenceFactor, pSettings->_outputCountDifferenceFactor);
+		float disimilarity = pool[parentIndex1]._genotype->getSimilarity(*pool[i]._genotype, pSettings->_excessFactor, pSettings->_disjointFactor, pSettings->_averageWeightDifferenceFactor, pSettings->_inputCountDifferenceFactor, pSettings->_outputCountDifferenceFactor, pSettings->_functionFactor);
 
 		if (disimilarity < minDisimilarity) {
 			minDisimilarityIndex = i;
