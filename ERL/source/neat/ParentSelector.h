@@ -30,7 +30,8 @@ namespace neat {
 	public:
 		virtual ~ParentSelector() {}
 
-		virtual void select(struct EvolverSettings* pSettings, const std::vector<Evolver::GenotypeAndFitness> &pool,
+		virtual void select(class EvolverSettings* pSettings, const std::vector<float> &functionChances,
+			const std::vector<Evolver::GenotypeAndFitness> &pool,
 			size_t &parentIndex1, size_t &parentIndex2, std::mt19937 &generator) const = 0;
 	};
 }

@@ -77,26 +77,29 @@ void Evolver::clearPopulation() {
 	_population.clear();
 }
 
-void Evolver::initialize(size_t numInputs, size_t numOutputs, const std::vector<float> &functionChances, std::shared_ptr<class ParentSelector> selector, std::mt19937 &generator, std::shared_ptr<NetworkGenotype>(*pGenotypeFactory)()) {
+void Evolver::initialize(size_t numInputs, size_t numOutputs,
+	const std::vector<float> &functionChances, std::shared_ptr<class ParentSelector> selector, std::mt19937 &generator,
+	const std::shared_ptr<EvolverSettings> &settings, std::function<std::shared_ptr<Evolvable>()> genotypeFactory) {
 	clearPopulation();
 
 	_functionChances = functionChances;
 
 	_selector = selector;
 
-	_pGenotypeFactory = pGenotypeFactory;
+	_settings = settings;
+
+	_genotypeFactory = genotypeFactory;
 
 	_innovationNumber = 0;
 
-	_population.resize(_settings._populationSize);
+	_population.resize(_settings->_populationSize);
 
 	// Default initialize
-	for (size_t i = 0; i < _settings._populationSize; i++) {
+	for (size_t i = 0; i < _settings->_populationSize; i++) {
 		// Generate new gene
-		std::shared_ptr<NetworkGenotype> newGenotype = _pGenotypeFactory();
+		std::shared_ptr<Evolvable> newGenotype = _genotypeFactory();
 
-		newGenotype->initialize(numInputs, numOutputs, _settings._minInitWeight, _settings._maxInitWeight, _settings._minInitBias, _settings._maxInitBias, functionChances, _innovationNumber, generator);
-		newGenotype->initializeAdditional(numInputs, numOutputs, _settings._minInitWeight, _settings._maxInitWeight, _settings._minInitBias, _settings._maxInitBias, _innovationNumber, generator);
+		newGenotype->initialize(numInputs, numOutputs, _settings.get(), functionChances, _innovationNumber, generator);
 
 		_population[i]._genotype = newGenotype;
 	}
@@ -105,12 +108,12 @@ void Evolver::initialize(size_t numInputs, size_t numOutputs, const std::vector<
 void Evolver::epoch(std::mt19937 &generator) {
 	normalizeFitness();
 
-	std::vector<GenotypeAndFitness> newPopulation(_settings._populationSize);
+	std::vector<GenotypeAndFitness> newPopulation(_settings->_populationSize);
 
 	std::list<size_t> eliteIndices; // Used to keep from deleting elites later on
 
 	// Add elites
-	if (_settings._numElites != 0) {
+	if (_settings->_numElites != 0) {
 		// Copy into list for best fitness search
 		struct IndexAndFitness	{
 			size_t _index;
@@ -119,11 +122,11 @@ void Evolver::epoch(std::mt19937 &generator) {
 
 		std::list<size_t> populationIndices;
 
-		for (size_t i = 0; i < _settings._populationSize; i++)
+		for (size_t i = 0; i < _settings->_populationSize; i++)
 			populationIndices.push_back(i);
 
 		// Find best and add directly into new population again
-		for (size_t i = 0; i < _settings._numElites; i++) {
+		for (size_t i = 0; i < _settings->_numElites; i++) {
 			// Find best
 			std::list<size_t>::iterator it = populationIndices.begin();
 			std::list<size_t>::iterator best = populationIndices.begin();
@@ -144,46 +147,24 @@ void Evolver::epoch(std::mt19937 &generator) {
 	std::uniform_real_distribution<float> dist01(0.0f, 1.0f);
 
 	// Create rest of new population
-	for (size_t i = _settings._numElites; i < _settings._populationSize; i++) {
+	for (size_t i = _settings->_numElites; i < _settings->_populationSize; i++) {
 		// Find parents
 		size_t parentIndex1, parentIndex2;
 
-		_selector->select(&_settings, _population, parentIndex1, parentIndex2, generator);
+		_selector->select(_settings.get(), _functionChances, _population, parentIndex1, parentIndex2, generator);
 
 		// Create offspring
-		std::shared_ptr<NetworkGenotype> child = _pGenotypeFactory();
+		std::shared_ptr<Evolvable> child = _genotypeFactory();
 
-		_population[parentIndex1]._genotype->crossover(*_population[parentIndex2]._genotype,
-			*child, _settings._disableGeneChance,
-			_population[parentIndex1]._fitness, _population[parentIndex2]._fitness, 
-			_settings._minBias, _settings._maxBias, _functionChances,
-			generator);
+		_population[parentIndex1]._genotype->crossover(_settings.get(), _functionChances,
+			_population[parentIndex2]._genotype.get(),
+			child.get(), _population[parentIndex1]._fitness, _population[parentIndex2]._fitness,
+			_innovationNumber, generator);
 
-		child->crossoverAdditional(*_population[parentIndex2]._genotype,
-			*child, _settings._disableGeneChance,
-			_population[parentIndex1]._fitness, _population[parentIndex2]._fitness, generator);
-
-		if (dist01(generator) < _settings._newNodeMutationRate)
-			child->mutateAddNode(_settings._minWeight, _settings._maxWeight, _settings._minBias, _settings._maxBias, _functionChances, _innovationNumber, generator);
-
-		if (dist01(generator) < _settings._newConnectionMutationRate)
-			child->mutateAddConnection(_settings._minWeight, _settings._maxWeight, _settings._minBias, _settings._maxBias, _functionChances, _innovationNumber, generator);
-
-		child->mutatePerturbWeight(_settings._weightPerturbationChance, _settings._maxPerturbation, generator);
-
-		child->mutateChangeFunction(_settings._changeFunctionChance, _functionChances, generator);
-
-		child->mutateAdditional(_innovationNumber, _settings._maxPerturbation, _settings._minWeight, _settings._maxWeight, _settings._minBias, _settings._maxBias, _innovationNumber, generator);
+		child->mutate(_settings.get(), _functionChances, _innovationNumber, generator);
 
 		newPopulation[i]._genotype = child;
 	}
-
-	// nullptrify references to elites
-	for (std::list<size_t>::iterator it = eliteIndices.begin(); it != eliteIndices.end(); it++)
-		_population[*it]._genotype = nullptr;
-
-	// Destroy old population, with the exception of the elites since they are simply transfered
-	clearPopulation();
 
 	_population = newPopulation;
 }

@@ -27,6 +27,8 @@
 
 #include <neat/Uncopyable.h>
 
+#include <neat/Evolvable.h>
+
 #include <vector>
 #include <list>
 
@@ -40,7 +42,7 @@
 #define NORMALIZE_EXCESS_DISJOINT_SIMILARITY
 
 namespace neat {
-	class NetworkGenotype : public Uncopyable {
+	class NetworkGenotype : public Uncopyable, public Evolvable {
 	public:
 		struct NodeData {
 			std::list<std::shared_ptr<ConnectionGene>> _connections;
@@ -113,10 +115,11 @@ namespace neat {
 
 		float getSimilarity(const NetworkGenotype &other, float excessFactor, float disjointFactor, float averageWeightDifferenceFactor, float inputCountDifferenceFactor, float outputCountDifferenceFactor, float activationFunctionFactor);
 
-		virtual void initializeAdditional(size_t numInputs, size_t numOutputs, float minWeight, float maxWeight, float minBias, float maxBias, InnovationNumberType &innovationNumber, std::mt19937 &generator) {}
-		virtual void crossoverAdditional(const NetworkGenotype &otherParent, NetworkGenotype &child, float disableGeneChance, float fitnessForThis, float fitnessForOtherParent, std::mt19937 &generator) {}
-		virtual void mutateAdditional(float perturbationChance, float maxPerturbation, float minWeight, float maxWeight, float minBias, float maxBias, InnovationNumberType &innovationNumber, std::mt19937 &generator) {}
-		virtual float getSimilarityAdditional(const NetworkGenotype &other, float excessFactor, float disjointFactor, float averageWeightDifferenceFactor, float inputCountDifferenceFactor, float outputCountDifferenceFactor, float activationFunctionFactor) { return 0.0f; }
+		// Inherited from Evolvable
+		void initialize(size_t numInputs, size_t numOutputs, const class EvolverSettings* settings, const std::vector<float> &functionChances, InnovationNumberType &innovationNumber, std::mt19937 &generator);
+		void crossover(const class EvolverSettings* settings, const std::vector<float> &functionChances, const Evolvable* pOtherParent, Evolvable* pChild, float fitnessForThis, float fitnessForOtherParent, InnovationNumberType &innovationNumber, std::mt19937 &generator);
+		void mutate(const class EvolverSettings* settings, const std::vector<float> &functionChances, InnovationNumberType &innovationNumber, std::mt19937 &generator);
+		float getSimilarity(const class EvolverSettings* settings, const std::vector<float> &functionChances, const Evolvable* pOther);
 
 		void setNumInputs(size_t numInputs);
 		void setNumOutputs(size_t numOutputs, float minBias, float maxBias, const std::vector<float> &functionChances, std::mt19937 &generator);

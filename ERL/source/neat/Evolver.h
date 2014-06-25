@@ -25,8 +25,13 @@
 
 #include <neat/NetworkGenotype.h>
 
+#include <neat/Evolvable.h>
+
+#include <functional>
+
 namespace neat {
-	struct EvolverSettings {
+	class EvolverSettings {
+	public:
 		float _speciationTolerance;
 		float _preferSimilarFactor;
 		float _reproduceRatio;
@@ -61,6 +66,7 @@ namespace neat {
 		size_t _numElites;
 
 		EvolverSettings();
+		virtual ~EvolverSettings() {}
 	};
 
 	class Evolver {
@@ -69,13 +75,15 @@ namespace neat {
 
 		std::vector<float> _functionChances;
 
-		std::shared_ptr<NetworkGenotype>(*_pGenotypeFactory)();
+		std::function<std::shared_ptr<Evolvable>()> _genotypeFactory;
+
+		std::shared_ptr<EvolverSettings> _settings;
 
 		void normalizeFitness();
 
 	public:
 		struct GenotypeAndFitness {
-			std::shared_ptr<NetworkGenotype> _genotype;
+			std::shared_ptr<Evolvable> _genotype;
 			float _fitness;
 		};
 
@@ -83,13 +91,13 @@ namespace neat {
 
 		InnovationNumberType _innovationNumber;
 
-		EvolverSettings _settings;
-
 		std::vector<GenotypeAndFitness> _population;
 
 		Evolver();
 
-		void initialize(size_t numInputs, size_t numOutputs, const std::vector<float> &functionChances, std::shared_ptr<class ParentSelector> selector, std::mt19937 &generator, std::shared_ptr<NetworkGenotype>(*pGenotypeFactory)() = defaultGenotypeFactory);
+		void initialize(size_t numInputs, size_t numOutputs,
+			const std::vector<float> &functionChances, std::shared_ptr<class ParentSelector> selector, std::mt19937 &generator,
+			const std::shared_ptr<EvolverSettings> &settings, std::function<std::shared_ptr<Evolvable>()> genotypeFactory = defaultGenotypeFactory);
 
 		void clearPopulation();
 
@@ -107,8 +115,8 @@ namespace neat {
 			return _numOutputs;
 		}
 
-		static std::shared_ptr<NetworkGenotype> defaultGenotypeFactory() {
-			return std::shared_ptr<NetworkGenotype>(new NetworkGenotype());
+		static std::shared_ptr<Evolvable> defaultGenotypeFactory() {
+			return std::shared_ptr<Evolvable>(new NetworkGenotype());
 		}
 	};
 }

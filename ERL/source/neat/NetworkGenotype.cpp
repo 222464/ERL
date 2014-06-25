@@ -23,6 +23,8 @@
 
 #include <neat/NetworkGenotype.h>
 
+#include <neat/Evolver.h>
+
 #include <neat/UtilFuncs.h>
 
 #include <fstream>
@@ -1013,18 +1015,49 @@ float NetworkGenotype::getSimilarity(const NetworkGenotype &other, float excessF
 
 	// Calculate similarity with weightings
 	if(numMatching == 0) // Avoid / 0
-		return getSimilarityAdditional(other, excessFactor, disjointFactor, averageWeightDifferenceFactor, inputCountDifferenceFactor, outputCountDifferenceFactor, activationFunctionFactor) + excessFactor * static_cast<float>(numExcessConnectionGenes1 + numExcessConnectionGenes2) * normalizationFactor +
+		return excessFactor * static_cast<float>(numExcessConnectionGenes1 + numExcessConnectionGenes2) * normalizationFactor +
 			disjointFactor * static_cast<float>(numDisjointConnectionGenes1 + numDisjointConnectionGenes2) * normalizationFactor +
 			inputCountDifferenceFactor * std::abs(static_cast<float>(_numInputs) - static_cast<float>(other._numInputs)) +
 			outputCountDifferenceFactor * std::abs(static_cast<float>(_numOutputs) - static_cast<float>(other._numOutputs)) +
 			activationFunctionFactor * totalActivationFunctionDifference;
 
-	return getSimilarityAdditional(other, excessFactor, disjointFactor, averageWeightDifferenceFactor, inputCountDifferenceFactor, outputCountDifferenceFactor, activationFunctionFactor) + excessFactor * static_cast<float>(numExcessConnectionGenes1 + numExcessConnectionGenes2) * normalizationFactor +
+	return excessFactor * static_cast<float>(numExcessConnectionGenes1 + numExcessConnectionGenes2) * normalizationFactor +
 		disjointFactor * static_cast<float>(numDisjointConnectionGenes1 + numDisjointConnectionGenes2) * normalizationFactor +
 		averageWeightDifferenceFactor * (totalWeightDifference / numMatching) +
 		inputCountDifferenceFactor * std::abs(static_cast<float>(_numInputs) - static_cast<float>(other._numInputs)) +
 		outputCountDifferenceFactor * std::abs(static_cast<float>(_numOutputs) - static_cast<float>(other._numOutputs)) +
 		activationFunctionFactor * totalActivationFunctionDifference;
+}
+
+void NetworkGenotype::initialize(size_t numInputs, size_t numOutputs, const EvolverSettings* settings, const std::vector<float> &functionChances, InnovationNumberType &innovationNumber, std::mt19937 &generator) {
+	initialize(numInputs, numOutputs, settings->_minWeight, settings->_maxWeight, settings->_minBias, settings->_maxBias, functionChances, innovationNumber, generator);
+}
+
+void NetworkGenotype::crossover(const EvolverSettings* settings, const std::vector<float> &functionChances, const Evolvable* pOtherParent, Evolvable* pChild, float fitnessForThis, float fitnessForOtherParent, InnovationNumberType &innovationNumber, std::mt19937 &generator) {
+	const NetworkGenotype* pOtherParentNetworkGenotype = static_cast<const NetworkGenotype*>(pOtherParent);
+	NetworkGenotype* pChildNetworkGenotype = static_cast<NetworkGenotype*>(pChild);
+	
+	crossover(*pOtherParentNetworkGenotype, *pChildNetworkGenotype, settings->_disableGeneChance, fitnessForThis, fitnessForOtherParent, settings->_minBias, settings->_maxBias, functionChances, generator);
+}
+
+void NetworkGenotype::mutate(const EvolverSettings* settings, const std::vector<float> &functionChances, InnovationNumberType &innovationNumber, std::mt19937 &generator) {
+	std::uniform_real_distribution<float> dist01(0.0f, 1.0f);
+
+	if (dist01(generator) < settings->_newNodeMutationRate)
+		mutateAddNode(settings->_minWeight, settings->_maxWeight, settings->_minBias, settings->_maxBias, functionChances, innovationNumber, generator);
+
+	if (dist01(generator) < settings->_newConnectionMutationRate)
+		mutateAddConnection(settings->_minWeight, settings->_maxWeight, settings->_minBias, settings->_maxBias, functionChances, innovationNumber, generator);
+
+	mutatePerturbWeight(settings->_weightPerturbationChance, settings->_maxPerturbation, generator);
+
+	mutateChangeFunction(settings->_changeFunctionChance, functionChances, generator);
+}
+
+float NetworkGenotype::getSimilarity(const EvolverSettings* settings, const std::vector<float> &functionChances, const Evolvable* pOther) {
+	const NetworkGenotype* pOtherNetworkGenotype = static_cast<const NetworkGenotype*>(pOther);
+	
+	return getSimilarity(*pOtherNetworkGenotype, settings->_excessFactor, settings->_disjointFactor, settings->_averageWeightDifferenceFactor, settings->_inputCountDifferenceFactor, settings->_outputCountDifferenceFactor, settings->_functionFactor);
 }
 
 void NetworkGenotype::setNumInputs(size_t numInputs) {

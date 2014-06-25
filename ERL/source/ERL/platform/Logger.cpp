@@ -23,4 +23,6 @@ Logger &Logger::operator<<(const std::string &str) {
 
 	if (_logFileStream.is_open())
 		_logFileStream << str;
+
+	return *this;
 }

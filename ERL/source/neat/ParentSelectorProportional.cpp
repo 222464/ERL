@@ -37,7 +37,8 @@ ParentSelectorProportional::ParentSelectorProportional()
 : _numCompatibleChooseRatio(0.5f)
 {}
 
-void ParentSelectorProportional::select(struct EvolverSettings* pSettings, const std::vector<Evolver::GenotypeAndFitness> &pool,
+void ParentSelectorProportional::select(EvolverSettings* pSettings, const std::vector<float> &functionChances,
+	const std::vector<Evolver::GenotypeAndFitness> &pool,
 	size_t &parentIndex1, size_t &parentIndex2, std::mt19937 &generator) const
 {
 	std::uniform_real_distribution<float> dist01(0.0f, 1.0f);
@@ -79,7 +80,7 @@ void ParentSelectorProportional::select(struct EvolverSettings* pSettings, const
 	fitnessSum = 0.0f;
 
 	size_t minDisimilarityIndex = 0;
-	float minDisimilarity = pool[parentIndex1]._genotype->getSimilarity(*pool[minDisimilarityIndex]._genotype, pSettings->_excessFactor, pSettings->_disjointFactor, pSettings->_averageWeightDifferenceFactor, pSettings->_inputCountDifferenceFactor, pSettings->_outputCountDifferenceFactor, pSettings->_functionFactor);
+	float minDisimilarity = pool[parentIndex1]._genotype->getSimilarity(pSettings, functionChances, pool[minDisimilarityIndex]._genotype.get());
 
 	size_t numCompatibleChoose = static_cast<size_t>(_numCompatibleChooseRatio * static_cast<float>(poolSize));
 
@@ -87,7 +88,7 @@ void ParentSelectorProportional::select(struct EvolverSettings* pSettings, const
 		if (i == parentIndex1)
 			continue;
 
-		float disimilarity = pool[parentIndex1]._genotype->getSimilarity(*pool[i]._genotype, pSettings->_excessFactor, pSettings->_disjointFactor, pSettings->_averageWeightDifferenceFactor, pSettings->_inputCountDifferenceFactor, pSettings->_outputCountDifferenceFactor, pSettings->_functionFactor);
+		float disimilarity = pool[parentIndex1]._genotype->getSimilarity(pSettings, functionChances, pool[i]._genotype.get());
 
 		if (disimilarity < minDisimilarity) {
 			minDisimilarityIndex = i;
