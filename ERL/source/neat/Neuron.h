@@ -47,12 +47,12 @@ namespace neat {
 
 		float _bias;
 
-		std::function<float(float)> _activationFunction;
+		size_t _activationFunctionIndex;
 
 		Neuron();
 
 		// Inherited from NeuronInput
-		virtual void update(class NetworkPhenotype &phenotype);
+		virtual void update(class NetworkPhenotype &phenotype, const std::vector<std::function<float(float)>> &activationFunctions);
 	};
 
 	std::ostream &operator<<(std::ostream &os, Neuron &neuron);

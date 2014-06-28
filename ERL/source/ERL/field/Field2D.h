@@ -12,7 +12,11 @@ Field2D
 namespace erl {
 	class Field2D {
 	private:
-		std::vector<cl::Image2D> _images;
+		cl::Buffer _frontBuffer;
+		cl::Buffer _backBuffer;
+
+		cl::Program _program;
+
 	public:
 		void create(const Field2DGenes &genes);
 		void update(ComputeSystem &cs);

@@ -116,10 +116,10 @@ namespace neat {
 		float getSimilarity(const NetworkGenotype &other, float excessFactor, float disjointFactor, float averageWeightDifferenceFactor, float inputCountDifferenceFactor, float outputCountDifferenceFactor, float activationFunctionFactor);
 
 		// Inherited from Evolvable
-		void initialize(size_t numInputs, size_t numOutputs, const class EvolverSettings* settings, const std::vector<float> &functionChances, InnovationNumberType &innovationNumber, std::mt19937 &generator);
-		void crossover(const class EvolverSettings* settings, const std::vector<float> &functionChances, const Evolvable* pOtherParent, Evolvable* pChild, float fitnessForThis, float fitnessForOtherParent, InnovationNumberType &innovationNumber, std::mt19937 &generator);
-		void mutate(const class EvolverSettings* settings, const std::vector<float> &functionChances, InnovationNumberType &innovationNumber, std::mt19937 &generator);
-		float getSimilarity(const class EvolverSettings* settings, const std::vector<float> &functionChances, const Evolvable* pOther);
+		void initialize(size_t numInputs, size_t numOutputs, const class EvolverSettings* pSettings, const std::vector<float> &functionChances, InnovationNumberType &innovationNumber, std::mt19937 &generator);
+		void crossover(const class EvolverSettings* pSettings, const std::vector<float> &functionChances, const Evolvable* pOtherParent, Evolvable* pChild, float fitnessForThis, float fitnessForOtherParent, InnovationNumberType &innovationNumber, std::mt19937 &generator);
+		void mutate(const class EvolverSettings* pSettings, const std::vector<float> &functionChances, InnovationNumberType &innovationNumber, std::mt19937 &generator);
+		float getSimilarity(const class EvolverSettings* pSettings, const std::vector<float> &functionChances, const Evolvable* pOther);
 
 		void setNumInputs(size_t numInputs);
 		void setNumOutputs(size_t numOutputs, float minBias, float maxBias, const std::vector<float> &functionChances, std::mt19937 &generator);

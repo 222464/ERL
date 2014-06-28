@@ -33,15 +33,13 @@ Neuron::Neuron()
 : _bias(0.0f)
 {}
 
-void Neuron::update(NetworkPhenotype &phenotype) {
-	assert(_activationFunction != nullptr);
-
+void Neuron::update(NetworkPhenotype &phenotype, const std::vector<std::function<float(float)>> &activationFunctions) {
 	float sum = _bias;
 	
 	for (size_t i = 0; i < _inputs.size(); i++)
 		sum += phenotype.getNeuronInputNode(_inputs[i]._inputOffset)._output * _inputs[i]._weight;
 
-	_output = _activationFunction(sum * phenotype._activationMultiplier);
+	_output = activationFunctions[_activationFunctionIndex](sum * phenotype._activationMultiplier);
 }
 
 std::ostream &operator<<(std::ostream &os, Neuron &neuron) {

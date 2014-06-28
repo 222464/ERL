@@ -33,6 +33,14 @@
 
 namespace neat {
 	class NetworkPhenotype {
+	public:
+		struct ConnectionData {
+			size_t _inIndex;
+			size_t _outIndex;
+
+			bool _isRecurrent;
+		};
+
 	private:
 		std::vector<NeuronInput> _inputs;
 		std::vector<Neuron> _hidden; // Can be recurrent with themselves and output layer
@@ -48,9 +56,9 @@ namespace neat {
 		NeuronInput &getNeuronInputNode(size_t index);
 		Neuron &getNeuronNode(size_t index);
 
-		void create(const NetworkGenotype &genotype, const std::vector<std::function<float(float)>> &activationFunctions);
+		void create(const NetworkGenotype &genotype);
 
-		void update();
+		void update(const std::vector<std::function<float(float)>> &activationFunctions);
 
 		size_t NetworkPhenotype::getNumInputs() const {
 			return _inputs.size();
@@ -73,5 +81,8 @@ namespace neat {
 		}
 
 		void resetOutputs();
+
+		void getConnectionData(std::vector<ConnectionData> &data, std::vector<std::vector<size_t>> &outgoingConnections);
+		void getConnectionData(std::vector<ConnectionData> &data);
 	};
 }

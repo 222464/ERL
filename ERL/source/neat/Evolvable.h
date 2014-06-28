@@ -33,9 +33,9 @@ namespace neat {
 	public:
 		virtual ~Evolvable() {}
 
-		virtual void initialize(size_t numInputs, size_t numOutputs, const class EvolverSettings* settings, const std::vector<float> &functionChances, InnovationNumberType &innovationNumber, std::mt19937 &generator) = 0;
-		virtual void crossover(const class EvolverSettings* settings, const std::vector<float> &functionChances, const Evolvable* pOtherParent, Evolvable* pChild, float fitnessForThis, float fitnessForOtherParent, InnovationNumberType &innovationNumber, std::mt19937 &generator) = 0;
-		virtual void mutate(const class EvolverSettings* settings, const std::vector<float> &functionChances, InnovationNumberType &innovationNumber, std::mt19937 &generator) = 0;
-		virtual float getSimilarity(const class EvolverSettings* settings, const std::vector<float> &functionChances, const Evolvable* pOther) { return 0.0f; }
+		virtual void initialize(size_t numInputs, size_t numOutputs, const class EvolverSettings* pSettings, const std::vector<float> &functionChances, InnovationNumberType &innovationNumber, std::mt19937 &generator) = 0;
+		virtual void crossover(const class EvolverSettings* pSettings, const std::vector<float> &functionChances, const Evolvable* pOtherParent, Evolvable* pChild, float fitnessForThis, float fitnessForOtherParent, InnovationNumberType &innovationNumber, std::mt19937 &generator) = 0;
+		virtual void mutate(const class EvolverSettings* pSettings, const std::vector<float> &functionChances, InnovationNumberType &innovationNumber, std::mt19937 &generator) = 0;
+		virtual float getSimilarity(const class EvolverSettings* pSettings, const std::vector<float> &functionChances, const Evolvable* pOther) { return 0.0f; }
 	};
 }

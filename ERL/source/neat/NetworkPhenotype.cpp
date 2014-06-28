@@ -22,6 +22,8 @@
 */
 #include <neat/NetworkPhenotype.h>
 
+#include <list>
+
 #include <assert.h>
 
 #include <iostream>
@@ -56,7 +58,7 @@ Neuron &NetworkPhenotype::getNeuronNode(size_t index) {
 	return _hidden[index - _inputs.size()];
 }
 
-void NetworkPhenotype::create(const NetworkGenotype &genotype, const std::vector<std::function<float(float)>> &activationFunctions) {
+void NetworkPhenotype::create(const NetworkGenotype &genotype, const std::vector<std::shared_ptr<std::string>> &activationFunctioNames) {
 	size_t numInputs = genotype.getNumInputs();
 	size_t numHidden = genotype.getNumHidden();
 	size_t numOutputs = genotype.getNumOutputs();
@@ -90,20 +92,21 @@ void NetworkPhenotype::create(const NetworkGenotype &genotype, const std::vector
 	}
 
 	// Set node data
-	for (size_t i = 0; i < genotype.getNodeDataSize(); i++) {
+	for (size_t i = getNumInputs(); i < genotype.getNodeDataSize(); i++) {
 		const NetworkGenotype::NodeData &data = genotype.getNodeData(i);
 
-		getNeuronNode(i)._activationFunction = activationFunctions[data._activationFunctionIndex];
-		getNeuronNode(i)._bias = data._bias;
+		Neuron &node = getNeuronNode(i);
+
+		node._bias = data._bias;
 	}
 }
 
-void NetworkPhenotype::update() {
+void NetworkPhenotype::update(const std::vector<std::function<float(float)>> &activationFunctions) {
 	for (size_t i = 0, size = _hidden.size(); i < size; i++)
-		_hidden[i].update(*this);
+		_hidden[i].update(*this, activationFunctions);
 
 	for (size_t i = 0, size = _outputs.size(); i < size; i++)
-		_outputs[i].update(*this);
+		_outputs[i].update(*this, activationFunctions);
 }
 
 void NetworkPhenotype::resetOutputs() {
@@ -112,4 +115,51 @@ void NetworkPhenotype::resetOutputs() {
 
 	for (size_t i = 0, size = _outputs.size(); i < size; i++)
 		_outputs[i]._output = 0.0f;
+}
+
+void NetworkPhenotype::getConnectionData(std::vector<ConnectionData> &data, std::vector<std::vector<size_t>> &outgoingConnections) {
+	size_t numNodes = getNumInputs() + getNumHidden() + getNumOutputs();
+
+	outgoingConnections.resize(numNodes);
+
+	for (size_t n = getNumInputs(); n < numNodes; n++) {
+		const Neuron &neuron = getNeuronNode(n);
+
+		for (size_t i = 0; i < neuron._inputs.size(); i++)
+			outgoingConnections[neuron._inputs[i]._inputOffset].push_back(n);
+	}
+
+	std::vector<bool> explored(numNodes, false);
+
+	std::list<size_t> queue;
+
+	// Starting points of queue: all nodes without inputs (input nodes included)
+	for (size_t n = 0; n < numNodes; n++)
+	if (getNeuronNode(n)._inputs.empty())
+		queue.push_back(n);
+
+	while (!queue.empty()) {
+		size_t current = queue.front();
+
+		queue.pop_front();
+
+		// Explore nodes whose inputs are this node
+		for (size_t i = 0; i < outgoingConnections[current].size(); i++) {
+			queue.push_back(outgoingConnections[current][i]);
+
+			ConnectionData cd;
+
+			cd._inIndex = current;
+			cd._outIndex = outgoingConnections[current][i];
+			cd._isRecurrent = !explored[outgoingConnections[current][i]];
+		}
+
+		explored[current] = true;
+	}
+}
+
+void NetworkPhenotype::getConnectionData(std::vector<ConnectionData> &data) {
+	std::vector<std::vector<size_t>> outgoingConnections;
+
+	getConnectionData(data, outgoingConnections);
 }

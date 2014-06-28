@@ -24,6 +24,7 @@
 #pragma once
 
 #include <algorithm>
+#include <functional>
 
 namespace neat {
 	class NeuronInput {
@@ -42,6 +43,6 @@ namespace neat {
 		NeuronInput();
 		virtual ~NeuronInput() {}
 
-		virtual void update(class NetworkPhenotype &phenotype) {}
+		virtual void update(class NetworkPhenotype &phenotype, const std::vector<std::function<float(float)>> &activationFunctions) {}
 	};
 }

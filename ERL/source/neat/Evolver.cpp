@@ -92,10 +92,10 @@ void Evolver::initialize(size_t numInputs, size_t numOutputs,
 
 	_innovationNumber = 0;
 
-	_population.resize(_settings->_populationSize);
+	_population.resize(_pSettings->_populationSize);
 
 	// Default initialize
-	for (size_t i = 0; i < _settings->_populationSize; i++) {
+	for (size_t i = 0; i < _pSettings->_populationSize; i++) {
 		// Generate new gene
 		std::shared_ptr<Evolvable> newGenotype = _genotypeFactory();
 
@@ -108,12 +108,12 @@ void Evolver::initialize(size_t numInputs, size_t numOutputs,
 void Evolver::epoch(std::mt19937 &generator) {
 	normalizeFitness();
 
-	std::vector<GenotypeAndFitness> newPopulation(_settings->_populationSize);
+	std::vector<GenotypeAndFitness> newPopulation(_pSettings->_populationSize);
 
 	std::list<size_t> eliteIndices; // Used to keep from deleting elites later on
 
 	// Add elites
-	if (_settings->_numElites != 0) {
+	if (_pSettings->_numElites != 0) {
 		// Copy into list for best fitness search
 		struct IndexAndFitness	{
 			size_t _index;
@@ -122,11 +122,11 @@ void Evolver::epoch(std::mt19937 &generator) {
 
 		std::list<size_t> populationIndices;
 
-		for (size_t i = 0; i < _settings->_populationSize; i++)
+		for (size_t i = 0; i < _pSettings->_populationSize; i++)
 			populationIndices.push_back(i);
 
 		// Find best and add directly into new population again
-		for (size_t i = 0; i < _settings->_numElites; i++) {
+		for (size_t i = 0; i < _pSettings->_numElites; i++) {
 			// Find best
 			std::list<size_t>::iterator it = populationIndices.begin();
 			std::list<size_t>::iterator best = populationIndices.begin();
@@ -147,7 +147,7 @@ void Evolver::epoch(std::mt19937 &generator) {
 	std::uniform_real_distribution<float> dist01(0.0f, 1.0f);
 
 	// Create rest of new population
-	for (size_t i = _settings->_numElites; i < _settings->_populationSize; i++) {
+	for (size_t i = _pSettings->_numElites; i < _pSettings->_populationSize; i++) {
 		// Find parents
 		size_t parentIndex1, parentIndex2;
 
