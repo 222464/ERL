@@ -28,17 +28,24 @@
 
 #include <vector>
 #include <memory>
+#include <unordered_set>
 
 #include <functional>
 
 namespace neat {
 	class NetworkPhenotype {
 	public:
-		struct ConnectionData {
+		struct Connection {
 			size_t _inIndex;
 			size_t _outIndex;
 
-			bool _isRecurrent;
+			bool operator==(const Connection &other) const {
+				return _inIndex == other._inIndex && _outIndex == other._outIndex;
+			}
+
+			size_t operator()(const Connection &c) const {
+				return c._inIndex ^ c._outIndex;
+			}
 		};
 
 	private:
@@ -82,7 +89,6 @@ namespace neat {
 
 		void resetOutputs();
 
-		void getConnectionData(std::vector<ConnectionData> &data, std::vector<std::vector<size_t>> &outgoingConnections);
-		void getConnectionData(std::vector<ConnectionData> &data);
+		void getConnectionData(std::unordered_set<Connection, Connection> &data, std::vector<std::vector<size_t>> &outgoingConnections, std::vector<bool> &recurrentSourceNodes);
 	};
 }

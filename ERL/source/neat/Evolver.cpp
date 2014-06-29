@@ -86,7 +86,7 @@ void Evolver::initialize(size_t numInputs, size_t numOutputs,
 
 	_selector = selector;
 
-	_settings = settings;
+	_pSettings = settings;
 
 	_genotypeFactory = genotypeFactory;
 
@@ -99,7 +99,7 @@ void Evolver::initialize(size_t numInputs, size_t numOutputs,
 		// Generate new gene
 		std::shared_ptr<Evolvable> newGenotype = _genotypeFactory();
 
-		newGenotype->initialize(numInputs, numOutputs, _settings.get(), functionChances, _innovationNumber, generator);
+		newGenotype->initialize(numInputs, numOutputs, _pSettings.get(), functionChances, _innovationNumber, generator);
 
 		_population[i]._genotype = newGenotype;
 	}
@@ -151,17 +151,17 @@ void Evolver::epoch(std::mt19937 &generator) {
 		// Find parents
 		size_t parentIndex1, parentIndex2;
 
-		_selector->select(_settings.get(), _functionChances, _population, parentIndex1, parentIndex2, generator);
+		_selector->select(_pSettings.get(), _functionChances, _population, parentIndex1, parentIndex2, generator);
 
 		// Create offspring
 		std::shared_ptr<Evolvable> child = _genotypeFactory();
 
-		_population[parentIndex1]._genotype->crossover(_settings.get(), _functionChances,
+		_population[parentIndex1]._genotype->crossover(_pSettings.get(), _functionChances,
 			_population[parentIndex2]._genotype.get(),
 			child.get(), _population[parentIndex1]._fitness, _population[parentIndex2]._fitness,
 			_innovationNumber, generator);
 
-		child->mutate(_settings.get(), _functionChances, _innovationNumber, generator);
+		child->mutate(_pSettings.get(), _functionChances, _innovationNumber, generator);
 
 		newPopulation[i]._genotype = child;
 	}

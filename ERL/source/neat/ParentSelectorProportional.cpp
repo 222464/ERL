@@ -95,13 +95,13 @@ void ParentSelectorProportional::select(EvolverSettings* pSettings, const std::v
 			minDisimilarity = disimilarity;
 		}
 
-		if (disimilarity < ppSettings->_speciationTolerance) {
+		if (disimilarity < pSettings->_speciationTolerance) {
 			IndexAndFitness iAF;
 
 			iAF._index = i;
 
 			// Weight fitness for compatibility
-			fitnessSum += iAF._fitness = std::max<float>(0.0f, pool[i]._fitness - disimilarity * ppSettings->_preferSimilarFactor);
+			fitnessSum += iAF._fitness = std::max<float>(0.0f, pool[i]._fitness - disimilarity * pSettings->_preferSimilarFactor);
 
 			compatibleGenotypes.push_back(iAF);
 

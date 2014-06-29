@@ -58,7 +58,7 @@ Neuron &NetworkPhenotype::getNeuronNode(size_t index) {
 	return _hidden[index - _inputs.size()];
 }
 
-void NetworkPhenotype::create(const NetworkGenotype &genotype, const std::vector<std::shared_ptr<std::string>> &activationFunctioNames) {
+void NetworkPhenotype::create(const NetworkGenotype &genotype) {
 	size_t numInputs = genotype.getNumInputs();
 	size_t numHidden = genotype.getNumHidden();
 	size_t numOutputs = genotype.getNumOutputs();
@@ -98,6 +98,7 @@ void NetworkPhenotype::create(const NetworkGenotype &genotype, const std::vector
 		Neuron &node = getNeuronNode(i);
 
 		node._bias = data._bias;
+		node._activationFunctionIndex = data._activationFunctionIndex;
 	}
 }
 
@@ -117,10 +118,15 @@ void NetworkPhenotype::resetOutputs() {
 		_outputs[i]._output = 0.0f;
 }
 
-void NetworkPhenotype::getConnectionData(std::vector<ConnectionData> &data, std::vector<std::vector<size_t>> &outgoingConnections) {
+void NetworkPhenotype::getConnectionData(std::unordered_set<Connection, Connection> &data, std::vector<std::vector<size_t>> &outgoingConnections, std::vector<bool> &recurrentSourceNodes) {
 	size_t numNodes = getNumInputs() + getNumHidden() + getNumOutputs();
 
 	outgoingConnections.resize(numNodes);
+
+	recurrentSourceNodes.clear();
+	recurrentSourceNodes.assign(numNodes, false);
+
+	data.clear();
 
 	for (size_t n = getNumInputs(); n < numNodes; n++) {
 		const Neuron &neuron = getNeuronNode(n);
@@ -135,31 +141,43 @@ void NetworkPhenotype::getConnectionData(std::vector<ConnectionData> &data, std:
 
 	// Starting points of queue: all nodes without inputs (input nodes included)
 	for (size_t n = 0; n < numNodes; n++)
-	if (getNeuronNode(n)._inputs.empty())
+	if (n < getNumInputs()) {
 		queue.push_back(n);
+		explored[n] = true;
+	}
+	else if (getNeuronNode(n)._inputs.empty()) {
+		queue.push_back(n);
+		//explored[n] = true;
+	}
 
 	while (!queue.empty()) {
 		size_t current = queue.front();
 
 		queue.pop_front();
 
+		if (current >= getNumInputs()) {
+			Neuron &neuron = getNeuronNode(current);
+
+			for (size_t i = 0; i < neuron._inputs.size(); i++) {
+				if (!explored[neuron._inputs[i]._inputOffset]) {
+					recurrentSourceNodes[neuron._inputs[i]._inputOffset] = true;
+
+					Connection c;
+
+					c._inIndex = neuron._inputs[i]._inputOffset;
+					c._outIndex = current;
+
+					data.insert(c);
+				}
+			}
+		}
+
 		// Explore nodes whose inputs are this node
 		for (size_t i = 0; i < outgoingConnections[current].size(); i++) {
-			queue.push_back(outgoingConnections[current][i]);
-
-			ConnectionData cd;
-
-			cd._inIndex = current;
-			cd._outIndex = outgoingConnections[current][i];
-			cd._isRecurrent = !explored[outgoingConnections[current][i]];
+			if (!explored[outgoingConnections[current][i]])
+				queue.push_back(outgoingConnections[current][i]);
 		}
 
 		explored[current] = true;
 	}
-}
-
-void NetworkPhenotype::getConnectionData(std::vector<ConnectionData> &data) {
-	std::vector<std::vector<size_t>> outgoingConnections;
-
-	getConnectionData(data, outgoingConnections);
 }

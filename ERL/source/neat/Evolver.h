@@ -77,7 +77,7 @@ namespace neat {
 
 		std::function<std::shared_ptr<Evolvable>()> _genotypeFactory;
 
-		std::shared_ptr<EvolverSettings> _settings;
+		std::shared_ptr<EvolverSettings> _pSettings;
 
 		void normalizeFitness();
 
