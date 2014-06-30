@@ -12,8 +12,9 @@ void Field2DGenes::initialize(size_t numInputs, size_t numOutputs, const neat::E
 	_connectionResponseSize = 1;
 	_nodeOutputSize = 1;
 
-	_connectionUpdateGenotype.initialize(_nodeOutputSize, _connectionResponseSize, pSettings, functionChances, innovationNumber, generator);
-	_activationUpdateGenotype.initialize(_connectionResponseSize, _nodeOutputSize, pSettings, functionChances, innovationNumber, generator);
+	// + 2 is for random and type inputs
+	_connectionUpdateGenotype.initialize(_nodeOutputSize + 2, _connectionResponseSize, pSettings, functionChances, innovationNumber, generator);
+	_activationUpdateGenotype.initialize(_connectionResponseSize + 2, _nodeOutputSize, pSettings, functionChances, innovationNumber, generator);
 	_typeSetGenotype.initialize(2, 1, pSettings, functionChances, innovationNumber, generator);
 	_encoderGenotype.initialize(1, _connectionResponseSize, pSettings, functionChances, innovationNumber, generator);
 	_decoderGenotype.initialize(_nodeOutputSize, 1, pSettings, functionChances, innovationNumber, generator);
@@ -35,10 +36,10 @@ void Field2DGenes::crossover(const neat::EvolverSettings* pSettings, const std::
 	_encoderGenotype.crossover(pSettings, functionChances, &pF2DOtherParent->_encoderGenotype, &pF2DChild->_encoderGenotype, fitnessForThis, fitnessForOtherParent, innovationNumber, generator);
 	_decoderGenotype.crossover(pSettings, functionChances, &pF2DOtherParent->_decoderGenotype, &pF2DChild->_decoderGenotype, fitnessForThis, fitnessForOtherParent, innovationNumber, generator);
 
-	pF2DChild->_connectionUpdateGenotype.setNumInputs(_nodeOutputSize);
+	pF2DChild->_connectionUpdateGenotype.setNumInputs(_nodeOutputSize + 2);
 	pF2DChild->_connectionUpdateGenotype.setNumOutputs(_connectionResponseSize, pSettings->_minBias, pSettings->_maxBias, functionChances, generator);
 
-	pF2DChild->_activationUpdateGenotype.setNumInputs(_connectionResponseSize);
+	pF2DChild->_activationUpdateGenotype.setNumInputs(_connectionResponseSize + 2);
 	pF2DChild->_activationUpdateGenotype.setNumOutputs(_nodeOutputSize, pSettings->_minBias, pSettings->_maxBias, functionChances, generator);
 
 	pF2DChild->_encoderGenotype.setNumOutputs(_connectionResponseSize, pSettings->_minBias, pSettings->_maxBias, functionChances, generator);
@@ -63,10 +64,10 @@ void Field2DGenes::mutate(const neat::EvolverSettings* pSettings, const std::vec
 	if (dist01(generator) < pF2DSettings->_addNodeOutputChance)
 		_nodeOutputSize++;
 
-	_connectionUpdateGenotype.setNumInputs(_nodeOutputSize);
+	_connectionUpdateGenotype.setNumInputs(_nodeOutputSize + 2);
 	_connectionUpdateGenotype.setNumOutputs(_connectionResponseSize, pSettings->_minBias, pSettings->_maxBias, functionChances, generator);
 
-	_activationUpdateGenotype.setNumInputs(_connectionResponseSize);
+	_activationUpdateGenotype.setNumInputs(_connectionResponseSize + 2);
 	_activationUpdateGenotype.setNumOutputs(_nodeOutputSize, pSettings->_minBias, pSettings->_maxBias, functionChances, generator);
 
 	_encoderGenotype.setNumOutputs(_connectionResponseSize, pSettings->_minBias, pSettings->_maxBias, functionChances, generator);

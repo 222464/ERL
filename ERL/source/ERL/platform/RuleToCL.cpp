@@ -91,15 +91,16 @@ std::string getOutputNodeString(neat::NetworkPhenotype &phenotype, const std::un
 	return functionNames[neuron._activationFunctionIndex] + "(" + sub + ")";
 }
 
-std::string erl::ruleToCL(neat::NetworkPhenotype &phenotype, const std::string &ruleName, const std::string &bufferName, const std::vector<std::string> &functionNames) {
-	size_t numNodes = phenotype.getNumInputs() + phenotype.getNumHidden() + phenotype.getNumOutputs();
-
-	// Recurrent data
-	std::unordered_set<neat::NetworkPhenotype::Connection, neat::NetworkPhenotype::Connection> data;
-	std::vector<std::vector<size_t>> outgoingConnections;
-	std::vector<bool> recurrentSourceNodes;
-
+std::string erl::ruleToCL(neat::NetworkPhenotype &phenotype,
+	std::unordered_set<neat::NetworkPhenotype::Connection, neat::NetworkPhenotype::Connection> &data,
+	std::vector<std::vector<size_t>> &outgoingConnections,
+	std::vector<bool> &recurrentSourceNodes,
+	size_t &numRecurrentSourceNodes,
+	const std::string &ruleName, const std::vector<std::string> &functionNames)
+{
 	phenotype.getConnectionData(data, outgoingConnections, recurrentSourceNodes);
+
+	size_t numNodes = phenotype.getNumInputs() + phenotype.getNumHidden() + phenotype.getNumOutputs();
 
 	size_t numRecurrentNodes = 0;
 
@@ -107,6 +108,8 @@ std::string erl::ruleToCL(neat::NetworkPhenotype &phenotype, const std::string &
 	for (size_t i = phenotype.getNumInputs(); i < recurrentSourceNodes.size(); i++)
 	if (recurrentSourceNodes[i])
 		numRecurrentNodes++;
+
+	numRecurrentSourceNodes = numRecurrentNodes;
 
 	std::string code;
 
@@ -121,10 +124,10 @@ std::string erl::ruleToCL(neat::NetworkPhenotype &phenotype, const std::string &
 	size_t outputsStart = phenotype.getNumInputs() + phenotype.getNumHidden();
 
 	for (size_t i = 0; i < phenotype.getNumOutputs(); i++) {
-		code += "float* output" + std::to_string(i + outputsStart);
+		code += "float* output" + std::to_string(i + outputsStart) + ", ";
 		
-		if (numRecurrentNodes != 0 || i != phenotype.getNumOutputs() - 1)
-			code += ", ";
+		//if (numRecurrentNodes != 0 || i != phenotype.getNumOutputs() - 1)
+		//	code += ", ";
 	}
 
 	// Recurrent

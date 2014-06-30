@@ -9,7 +9,7 @@ Main
 #include <neat/Evolver.h>
 #include <neat/NetworkGenotype.h>
 #include <neat/NetworkPhenotype.h>
-#include <erl/platform/RuleToCL.h>
+#include <erl/platform/Field2DGenesToCL.h>
 
 #include <time.h>
 #include <iostream>
@@ -25,6 +25,7 @@ int main() {
 	std::vector<float> functionChances(3);
 	std::vector<std::string> functionNames(3);
 	std::vector<std::function<float(float)>> functions(3);
+	neat::InnovationNumberType innovNum = 0;
 
 	functionChances[0] = 1.0f;
 	functionChances[1] = 1.0f;
@@ -39,21 +40,13 @@ int main() {
 	functions[2] = std::bind(std::expf, std::placeholders::_1);
 
 	// Generate random genotype
-	neat::NetworkGenotype gt;
-	neat::InnovationNumberType innovNum;
+	erl::Field2DGenes genes;
 
-	gt.initialize(2, 2, &settings, functionChances, innovNum, generator);
-
-	for (size_t i = 0; i < 60; i++)
-		gt.mutate(&settings, functionChances, innovNum, generator);
-
-	neat::NetworkPhenotype pt;
-
-	pt.create(gt);
+	genes.initialize(2, 2, &settings, functionChances, innovNum, generator);
 
 	std::ofstream toFile("testOutput.txt");
 
-	toFile << erl::ruleToCL(pt, "testRule1", "sdasd", functionNames);
+	toFile << erl::field2DGenesNodeUpdateToCL(genes, functionNames, 10, 10, 2);
 
 	toFile.close();
 
