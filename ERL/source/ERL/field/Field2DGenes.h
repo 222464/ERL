@@ -21,6 +21,9 @@ namespace erl {
 		int _connectionResponseSize;
 		int _nodeOutputSize;
 
+		std::vector<std::tuple<float, float>> _recurrentNodeInitBounds;
+		std::vector<std::tuple<float, float>> _recurrentConnectionInitBounds;
+
 	public:
 		// Inherited from Evolvable
 		void initialize(size_t numInputs, size_t numOutputs, const neat::EvolverSettings* pSettings, const std::vector<float> &functionChances, neat::InnovationNumberType &innovationNumber, std::mt19937 &generator);
@@ -55,5 +58,7 @@ namespace erl {
 		int getNodeOutputSize() const {
 			return _nodeOutputSize;
 		}
+
+		friend class Field2D;
 	};
 }

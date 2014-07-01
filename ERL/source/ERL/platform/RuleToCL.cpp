@@ -92,25 +92,14 @@ std::string getOutputNodeString(neat::NetworkPhenotype &phenotype, const std::un
 }
 
 std::string erl::ruleToCL(neat::NetworkPhenotype &phenotype,
-	std::unordered_set<neat::NetworkPhenotype::Connection, neat::NetworkPhenotype::Connection> &data,
-	std::vector<std::vector<size_t>> &outgoingConnections,
-	std::vector<bool> &recurrentSourceNodes,
-	size_t &numRecurrentSourceNodes,
+	const neat::NetworkPhenotype::RuleData &ruleData,
 	const std::string &ruleName, const std::vector<std::string> &functionNames)
 {
-	phenotype.getConnectionData(data, outgoingConnections, recurrentSourceNodes);
-
 	size_t numNodes = phenotype.getNumInputs() + phenotype.getNumHidden() + phenotype.getNumOutputs();
 
 	size_t numRecurrentNodes = 0;
 
 	// Do not include inputs in recurrent node count
-	for (size_t i = phenotype.getNumInputs(); i < recurrentSourceNodes.size(); i++)
-	if (recurrentSourceNodes[i])
-		numRecurrentNodes++;
-
-	numRecurrentSourceNodes = numRecurrentNodes;
-
 	std::string code;
 
 	code += "void " + ruleName + "(";
@@ -131,8 +120,8 @@ std::string erl::ruleToCL(neat::NetworkPhenotype &phenotype,
 	}
 
 	// Recurrent
-	for (size_t i = phenotype.getNumInputs(); i < recurrentSourceNodes.size(); i++) {
-		if (recurrentSourceNodes[i]) {
+	for (size_t i = phenotype.getNumInputs(); i < ruleData._recurrentSourceNodes.size(); i++) {
+		if (ruleData._recurrentSourceNodes[i]) {
 			code += "float* recurrent" + std::to_string(i);
 
 			code += ", ";
@@ -149,21 +138,21 @@ std::string erl::ruleToCL(neat::NetworkPhenotype &phenotype,
 
 	// Compute all intermediates
 	for (size_t i = 0; i < phenotype.getNumInputs(); i++)
-		floodForwardFindCalculateIntermediates(phenotype, data, outgoingConnections, recurrentSourceNodes, functionNames, i, calculatedIntermediates, code);
+		floodForwardFindCalculateIntermediates(phenotype, ruleData._data, ruleData._outgoingConnections, ruleData._recurrentSourceNodes, functionNames, i, calculatedIntermediates, code);
 
 	for (size_t i = phenotype.getNumInputs(); i < numNodes; i++)
 	if (phenotype.getNeuronNode(i)._inputs.empty())
-		floodForwardFindCalculateIntermediates(phenotype, data, outgoingConnections, recurrentSourceNodes, functionNames, i, calculatedIntermediates, code);
+		floodForwardFindCalculateIntermediates(phenotype, ruleData._data, ruleData._outgoingConnections, ruleData._recurrentSourceNodes, functionNames, i, calculatedIntermediates, code);
 
 	// Compute all outputs
 	for (size_t i = 0; i < phenotype.getNumOutputs(); i++) {
-		code += "	*output" + std::to_string(i + outputsStart) + " = " + getOutputNodeString(phenotype, data, outgoingConnections, recurrentSourceNodes, functionNames, i + outputsStart) + ";\n";
+		code += "	*output" + std::to_string(i + outputsStart) + " = " + getOutputNodeString(phenotype, ruleData._data, ruleData._outgoingConnections, ruleData._recurrentSourceNodes, functionNames, i + outputsStart) + ";\n";
 	}
 
 	// Update recurrents
-	for (size_t i = phenotype.getNumInputs(); i < recurrentSourceNodes.size(); i++) {
-		if (recurrentSourceNodes[i]) {
-			code += "	*recurrent" + std::to_string(i) + " = " + getOutputNodeString(phenotype, data, outgoingConnections, recurrentSourceNodes, functionNames, i) + ";\n";
+	for (size_t i = phenotype.getNumInputs(); i < ruleData._recurrentSourceNodes.size(); i++) {
+		if (ruleData._recurrentSourceNodes[i]) {
+			code += "	*recurrent" + std::to_string(i) + " = " + getOutputNodeString(phenotype, ruleData._data, ruleData._outgoingConnections, ruleData._recurrentSourceNodes, functionNames, i) + ";\n";
 		}
 	}
 

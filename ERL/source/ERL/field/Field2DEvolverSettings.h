@@ -16,6 +16,9 @@ namespace erl {
 		float _connectionReponseDifferenceFactor;
 		float _nodeOutputSizeDifferenceFactor;
 
+		float _averageInitChance;
+		float _maxInitPerturbation;
+
 		Field2DEvolverSettings();
 	};
 }

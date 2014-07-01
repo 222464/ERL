@@ -48,6 +48,13 @@ namespace neat {
 			}
 		};
 
+		struct RuleData {
+			std::unordered_set<neat::NetworkPhenotype::Connection, neat::NetworkPhenotype::Connection> _data;
+			std::vector<std::vector<size_t>> _outgoingConnections;
+			std::vector<bool> _recurrentSourceNodes;
+			size_t _numRecurrentSourceNodes;
+		};
+
 	private:
 		std::vector<NeuronInput> _inputs;
 		std::vector<Neuron> _hidden; // Can be recurrent with themselves and output layer
@@ -89,6 +96,6 @@ namespace neat {
 
 		void resetOutputs();
 
-		void getConnectionData(std::unordered_set<Connection, Connection> &data, std::vector<std::vector<size_t>> &outgoingConnections, std::vector<bool> &recurrentSourceNodes);
+		void getConnectionData(RuleData &ruleData);
 	};
 }

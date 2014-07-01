@@ -118,21 +118,21 @@ void NetworkPhenotype::resetOutputs() {
 		_outputs[i]._output = 0.0f;
 }
 
-void NetworkPhenotype::getConnectionData(std::unordered_set<Connection, Connection> &data, std::vector<std::vector<size_t>> &outgoingConnections, std::vector<bool> &recurrentSourceNodes) {
+void NetworkPhenotype::getConnectionData(RuleData &ruleData) {
 	size_t numNodes = getNumInputs() + getNumHidden() + getNumOutputs();
 
-	outgoingConnections.resize(numNodes);
+	ruleData._outgoingConnections.resize(numNodes);
 
-	recurrentSourceNodes.clear();
-	recurrentSourceNodes.assign(numNodes, false);
+	ruleData._recurrentSourceNodes.clear();
+	ruleData._recurrentSourceNodes.assign(numNodes, false);
 
-	data.clear();
+	ruleData._data.clear();
 
 	for (size_t n = getNumInputs(); n < numNodes; n++) {
 		const Neuron &neuron = getNeuronNode(n);
 
 		for (size_t i = 0; i < neuron._inputs.size(); i++)
-			outgoingConnections[neuron._inputs[i]._inputOffset].push_back(n);
+			ruleData._outgoingConnections[neuron._inputs[i]._inputOffset].push_back(n);
 	}
 
 	std::vector<bool> explored(numNodes, false);
@@ -160,24 +160,31 @@ void NetworkPhenotype::getConnectionData(std::unordered_set<Connection, Connecti
 
 			for (size_t i = 0; i < neuron._inputs.size(); i++) {
 				if (!explored[neuron._inputs[i]._inputOffset]) {
-					recurrentSourceNodes[neuron._inputs[i]._inputOffset] = true;
+					ruleData._recurrentSourceNodes[neuron._inputs[i]._inputOffset] = true;
 
 					Connection c;
 
 					c._inIndex = neuron._inputs[i]._inputOffset;
 					c._outIndex = current;
 
-					data.insert(c);
+					ruleData._data.insert(c);
 				}
 			}
 		}
 
 		// Explore nodes whose inputs are this node
-		for (size_t i = 0; i < outgoingConnections[current].size(); i++) {
-			if (!explored[outgoingConnections[current][i]])
-				queue.push_back(outgoingConnections[current][i]);
+		for (size_t i = 0; i < ruleData._outgoingConnections[current].size(); i++) {
+			if (!explored[ruleData._outgoingConnections[current][i]])
+				queue.push_back(ruleData._outgoingConnections[current][i]);
 		}
 
 		explored[current] = true;
 	}
+
+	// Do not include inputs in recurrent node count
+	ruleData._numRecurrentSourceNodes = 0;
+
+	for (size_t i = getNumInputs(); i < ruleData._recurrentSourceNodes.size(); i++)
+	if (ruleData._recurrentSourceNodes[i])
+		ruleData._numRecurrentSourceNodes++;
 }

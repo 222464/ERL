@@ -6,10 +6,11 @@ using namespace erl;
 // Buffer is organized like so:
 // nodeOutput[0..n] + typeInput + nodeRecurrentData[0..n] + c * (connectionResponse[0..n] + typeInput + connectionRecurrentData[0..n])
 
-std::string erl::field2DGenesNodeUpdateToCL(erl::Field2DGenes &genes, const std::vector<std::string> &functionNames, int fieldWidth, int fieldHeight, int connectionRadius) {
-	int connectionDimensionSize = connectionRadius + 1;
-	int numConnections = connectionDimensionSize * connectionDimensionSize;
-
+std::string erl::field2DGenesNodeUpdateToCL(erl::Field2DGenes &genes, const erl::Field2D &field,
+	neat::NetworkPhenotype &connectionPhenotype, neat::NetworkPhenotype &nodePhenotype,
+	const neat::NetworkPhenotype::RuleData &connectionRuleData, const neat::NetworkPhenotype::RuleData &nodeRuleData,
+	const std::vector<std::string> &functionNames, int fieldWidth, int fieldHeight, int connectionRadius)
+{
 	std::string code = "";
 
 	// Add header
@@ -27,7 +28,7 @@ std::string erl::field2DGenesNodeUpdateToCL(erl::Field2DGenes &genes, const std:
 		"constant float fieldHeightInv = " + std::to_string(1.0f / fieldHeight) + ";\n"
 		"\n"
 		"// Connection offsets\n"
-		"constant char2 offsets[" + std::to_string(numConnections) + "] = {\n";
+		"constant char2 offsets[" + std::to_string(field.getNumConnections()) + "] = {\n";
 
 	for (int x = -connectionRadius; x <= connectionRadius; x++) {
 		code += "	";
@@ -50,41 +51,19 @@ std::string erl::field2DGenesNodeUpdateToCL(erl::Field2DGenes &genes, const std:
 		"// Connection update rule\n";
 
 	// Generate rules for all nets
-	neat::NetworkPhenotype connectionPT;
-
-	connectionPT.create(genes.getConnectionUpdateGenotype());
-
-	std::unordered_set<neat::NetworkPhenotype::Connection, neat::NetworkPhenotype::Connection> connectionData;
-	std::vector<std::vector<size_t>> connectionOutgoingConnections;
-	std::vector<bool> connectionRecurrentSourceNodes;
-	size_t connectionNumRecurrentSourceNodes;
-
-	code += ruleToCL(connectionPT, connectionData, connectionOutgoingConnections, connectionRecurrentSourceNodes, connectionNumRecurrentSourceNodes, "connectionRule", functionNames);
+	code += ruleToCL(connectionPhenotype, connectionRuleData, "connectionRule", functionNames);
 
 	code += "\n// Activation update rule\n";
 
-	neat::NetworkPhenotype activationPT;
-
-	activationPT.create(genes.getActivationUpdateGenotype());
-
-	std::unordered_set<neat::NetworkPhenotype::Connection, neat::NetworkPhenotype::Connection> nodeData;
-	std::vector<std::vector<size_t>> nodeOutgoingConnections;
-	std::vector<bool> nodeRecurrentSourceNodes;
-	size_t nodeNumRecurrentSourceNodes;
-
-	code += ruleToCL(activationPT, nodeData, nodeOutgoingConnections, nodeRecurrentSourceNodes, nodeNumRecurrentSourceNodes, "activationRule", functionNames);
-
-	int nodeSize = genes.getNodeOutputSize() + 2 + nodeNumRecurrentSourceNodes;
-	int connectionSize = genes.getConnectionResponseSize() + 2 + connectionNumRecurrentSourceNodes;
-	int nodeAndConnectionsSize = nodeSize + connectionSize * numConnections;
+	code += ruleToCL(nodePhenotype, nodeRuleData, "activationRule", functionNames);
 
 	// Other constants, and kernel definition
 	code +=
 		"\n"
 		"// Data sizes\n"
-		"constant int nodeAndConnectionsSize = " + std::to_string(nodeAndConnectionsSize) + ";\n"
-		"constant int connectionSize = " + std::to_string(connectionSize) + ";\n"
-		"constant int nodeSize = " + std::to_string(nodeSize) + ";\n"
+		"constant int nodeAndConnectionsSize = " + std::to_string(field.getNodeAndConnectionsSize()) + ";\n"
+		"constant int connectionSize = " + std::to_string(field.getConnectionSize()) + ";\n"
+		"constant int nodeSize = " + std::to_string(field.getNodeSize()) + ";\n"
 		"\n"
 		"// The kernel\n"
 		"void kernel nodeUpdate(global const float* source, global float* destination, read_only image2d_t randomImage, float2 randomSeed) {\n"
@@ -93,6 +72,7 @@ std::string erl::field2DGenesNodeUpdateToCL(erl::Field2DGenes &genes, const std:
 		"	int connectionsStartOffset = nodeStartOffset + nodeSize;\n"
 		"	int2 nodePosition = (int2)(nodeIndex % fieldWidth, nodeIndex / fieldHeight);\n"
 		"	float2 normalizedCoords = (float2)nodePosition * float2(fieldWidthInv, fieldHeightInv);\n"
+		"	float nodeType = source[nodeStartOffset + " + std::to_string(genes.getNodeOutputSize()) + "];\n"
 		"\n"
 		"	// Update connections\n";
 
@@ -123,8 +103,8 @@ std::string erl::field2DGenesNodeUpdateToCL(erl::Field2DGenes &genes, const std:
 	}
 
 	// Assign changeable recurrent values
-	for (int i = 0; i < connectionNumRecurrentSourceNodes; i++) {
-		code += "		float connectionRec" + std::to_string(i) + " =  source[connectionStartOffset + " + std::to_string(genes.getConnectionResponseSize() + 1 + i) + "];\n";
+	for (int i = 0; i < connectionRuleData._numRecurrentSourceNodes; i++) {
+		code += "		float connectionRec" + std::to_string(i) + " =  source[connectionStartOffset + " + std::to_string(genes.getConnectionResponseSize() + i) + "];\n";
 	}
 
 	code += "\n"
@@ -135,11 +115,9 @@ std::string erl::field2DGenesNodeUpdateToCL(erl::Field2DGenes &genes, const std:
 		code += "source[connectionStartOffset + " + std::to_string(i) + "], ";
 	}
 
-	// Type input
-	code += "source[connectionStartOffset + " + std::to_string(genes.getNodeOutputSize()) + "], ";
-
-	// Random input
-	code += "read_imagef(randomImage, connectionNodePosition + nodePosition).x, ";
+	// Type and random input
+	code +=
+		"nodeType, read_imagef(randomImage, connectionNodePosition + nodePosition).x, ";
 
 	// Add outputs
 	for (int i = 0; i < genes.getConnectionResponseSize(); i++) {
@@ -147,7 +125,7 @@ std::string erl::field2DGenesNodeUpdateToCL(erl::Field2DGenes &genes, const std:
 	}
 
 	// Add recurrent connections
-	for (int i = 0; i < connectionNumRecurrentSourceNodes; i++) {
+	for (int i = 0; i < connectionRuleData._numRecurrentSourceNodes; i++) {
 		code += "&connectionRec" + std::to_string(i) + ", ";
 	}
 
@@ -175,8 +153,8 @@ std::string erl::field2DGenesNodeUpdateToCL(erl::Field2DGenes &genes, const std:
 		"\n"
 		"		// Assign recurrent values to destination buffer\n";
 
-	for (int i = 0; i < connectionNumRecurrentSourceNodes; i++) {
-		code += "		destination[connectionStartOffset + " + std::to_string(genes.getNodeOutputSize() + 1 + i) + "] = connectionRec" + std::to_string(i) + ";\n";
+	for (int i = 0; i < connectionRuleData._numRecurrentSourceNodes; i++) {
+		code += "		destination[connectionStartOffset + " + std::to_string(genes.getConnectionResponseSize() + i) + "] = connectionRec" + std::to_string(i) + ";\n";
 	}
 
 	// ----------------------------------------------------------- Finish block -----------------------------------------------------------
@@ -191,8 +169,8 @@ std::string erl::field2DGenesNodeUpdateToCL(erl::Field2DGenes &genes, const std:
 	}
 
 	// Assign changeable recurrent values
-	for (int i = 0; i < nodeNumRecurrentSourceNodes; i++) {
-		code += "	float nodeRec" + std::to_string(i) + " =  source[nodeStartOffset + " + std::to_string(genes.getNodeOutputSize() + 1 + i) + "];\n";
+	for (int i = 0; i < nodeRuleData._numRecurrentSourceNodes; i++) {
+		code += "	float nodeRec" + std::to_string(i) + " =  source[nodeStartOffset + " + std::to_string(genes.getNodeOutputSize() + 3 + i) + "];\n";
 	}
 
 	code += "\n"
@@ -203,11 +181,9 @@ std::string erl::field2DGenesNodeUpdateToCL(erl::Field2DGenes &genes, const std:
 		code += "responseSum" + std::to_string(i) + ", ";
 	}
 
-	// Type input
-	code += "source[nodeStartOffset + " + std::to_string(genes.getConnectionResponseSize()) + "], ";
-
-	// Random input
-	code += "read_imagef(randomImage, nodePosition + int2(-1, -1)).x, ";
+	// Type and random input
+	code +=
+		"nodeType, read_imagef(randomImage, nodePosition + int2(-1, -1)).x, ";
 
 	// Add outputs
 	for (int i = 0; i < genes.getNodeOutputSize(); i++) {
@@ -215,7 +191,7 @@ std::string erl::field2DGenesNodeUpdateToCL(erl::Field2DGenes &genes, const std:
 	}
 
 	// Add recurrent connections
-	for (int i = 0; i < nodeNumRecurrentSourceNodes; i++) {
+	for (int i = 0; i < nodeRuleData._numRecurrentSourceNodes; i++) {
 		code += "&nodeRec" + std::to_string(i) + ", ";
 	}
 
@@ -235,8 +211,8 @@ std::string erl::field2DGenesNodeUpdateToCL(erl::Field2DGenes &genes, const std:
 		"\n"
 		"	// Assign recurrent values to destination buffer\n";
 
-	for (int i = 0; i < connectionNumRecurrentSourceNodes; i++) {
-		code += "	destination[nodeStartOffset + " + std::to_string(genes.getConnectionResponseSize() + 1 + i) + "] = nodeRec" + std::to_string(i) + ";\n";
+	for (int i = 0; i < connectionRuleData._numRecurrentSourceNodes; i++) {
+		code += "	destination[nodeStartOffset + " + std::to_string(genes.getConnectionResponseSize() + 3 + i) + "] = nodeRec" + std::to_string(i) + ";\n";
 	}
 
 	// Finish kernel
