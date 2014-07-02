@@ -15,6 +15,7 @@ namespace erl {
 		cl::Platform _platform;
 		cl::Device _device;
 		cl::Context _context;
+		cl::CommandQueue _queue;
 
 	public:
 		void create();
@@ -30,6 +31,10 @@ namespace erl {
 
 		cl::Context &getContext() {
 			return _context;
+		}
+
+		cl::CommandQueue &getQueue() {
+			return _queue;
 		}
 	};
 }

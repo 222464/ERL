@@ -8,15 +8,35 @@ Field2D
 
 #include <erl/platform/ComputeSystem.h>
 #include <erl/field/Field2DGenes.h>
+#include <erl/platform/SoftwareImage2D.h>
 #include <neat/NetworkPhenotype.h>
 #include <array>
 
 namespace erl {
 	class Field2D {
+	public:
+		struct RandomSeed {
+			float _x, _y;
+
+			RandomSeed() {}
+			RandomSeed(float x, float y)
+				: _x(x), _y(y)
+			{}
+		};
+
 	private:
 		std::array<cl::Buffer, 2> _buffers;
+		cl::make_kernel<cl::Buffer&, cl::Buffer&, cl::Image2D&, cl::Image2D&, RandomSeed, cl_float> _kernelFunctor;
+
+		unsigned char _currentReadBufferIndex;
+		unsigned char _currentWriteBufferIndex;
 
 		cl::Program _program;
+
+		cl::Image2D _inputImage;
+		std::shared_ptr<cl::Image2D> _randomImage;
+
+		SoftwareImage2D<float> _inputSoftwareImage;
 
 		neat::NetworkPhenotype _connectionPhenotype;
 		neat::NetworkPhenotype _nodePhenotype;
@@ -42,9 +62,10 @@ namespace erl {
 		std::vector<float> _outputs;
 
 	public:
-		void create(Field2DGenes &genes, ComputeSystem &cs, int width, int height, int connectionRadius, int numInputs, int numOutputs,
+		void create(Field2DGenes &genes, ComputeSystem &cs, int width, int height, int connectionRadius, int numInputs, int numOutputs, const std::shared_ptr<cl::Image2D> &randomImage,
 			const std::vector<std::function<float(float)>> &activationFunctions, float minRecInit, float maxRecInit, float inputRadius, std::mt19937 &generator);
-		void update(ComputeSystem &cs);
+
+		void update(float reward, ComputeSystem &cs, std::mt19937 &generator);
 
 		const neat::NetworkPhenotype::RuleData &getConnectionData() const {
 			return _connectionData;

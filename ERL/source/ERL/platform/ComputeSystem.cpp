@@ -17,6 +17,8 @@ void ComputeSystem::create() {
 	_device = allDevices.front();
 
 	_context = _device;
+
+	_queue = cl::CommandQueue(_context, _device);
 }
 
 void ComputeSystem::create(Logger &logger) {
@@ -46,4 +48,6 @@ void ComputeSystem::create(Logger &logger) {
 	logger << "Using device: " << _device.getInfo<CL_DEVICE_NAME>() << endl;
 
 	_context = _device;
+
+	_queue = cl::CommandQueue(_context, _device);
 }
