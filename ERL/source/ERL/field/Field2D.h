@@ -26,17 +26,19 @@ namespace erl {
 
 	private:
 		std::array<cl::Buffer, 2> _buffers;
-		cl::make_kernel<cl::Buffer&, cl::Buffer&, cl::Image2D&, cl::Image2D&, RandomSeed, cl_float> _kernelFunctor;
+		cl::make_kernel<cl::Buffer&, cl::Buffer&, cl::Image2D&, cl::Image1D&, cl::Image1D&, cl::Image2D&, RandomSeed, float> _kernelFunctor;
 
 		unsigned char _currentReadBufferIndex;
 		unsigned char _currentWriteBufferIndex;
 
 		cl::Program _program;
 
-		cl::Image2D _inputImage;
-		std::shared_ptr<cl::Image2D> _randomImage;
+		cl::Image2D _typeImage;
 
-		SoftwareImage2D<float> _inputSoftwareImage;
+		cl::Image1D _inputImage;
+		cl::Image1D _outputImage;
+
+		std::shared_ptr<cl::Image2D> _randomImage;
 
 		neat::NetworkPhenotype _connectionPhenotype;
 		neat::NetworkPhenotype _nodePhenotype;
@@ -44,6 +46,8 @@ namespace erl {
 		neat::NetworkPhenotype::RuleData _connectionData;
 		neat::NetworkPhenotype::RuleData _nodeData;
 
+		int _connectionResponseSize;
+		int _nodeOutputSize;
 		int _width, _height;
 		int _connectionRadius;
 
@@ -61,11 +65,14 @@ namespace erl {
 		std::vector<float> _inputs;
 		std::vector<float> _outputs;
 
+		std::vector<neat::NetworkPhenotype> _encoderPhenotypes;
+		std::vector<neat::NetworkPhenotype> _decoderPhenotypes;
+
 	public:
 		void create(Field2DGenes &genes, ComputeSystem &cs, int width, int height, int connectionRadius, int numInputs, int numOutputs, const std::shared_ptr<cl::Image2D> &randomImage,
 			const std::vector<std::function<float(float)>> &activationFunctions, float minRecInit, float maxRecInit, float inputRadius, std::mt19937 &generator);
 
-		void update(float reward, ComputeSystem &cs, std::mt19937 &generator);
+		void update(float reward, ComputeSystem &cs, const std::vector<std::function<float(float)>> &activationFunctions, std::mt19937 &generator);
 
 		const neat::NetworkPhenotype::RuleData &getConnectionData() const {
 			return _connectionData;
