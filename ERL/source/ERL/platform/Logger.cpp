@@ -6,7 +6,7 @@ void Logger::create(bool showInConsole) {
 	_showInConsole = showInConsole;
 }
 
-void Logger::create(const std::string &logFileName, bool showInConsole) {
+void Logger::createWithFile(const std::string &logFileName, bool showInConsole) {
 	_logFileStream.open(logFileName);
 
 	_showInConsole = showInConsole;

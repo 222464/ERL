@@ -25,7 +25,7 @@ namespace erl {
 		}
 
 		void create(bool showInConsole = true);
-		void create(const std::string &logFileName, bool showInConsole = true);
+		void createWithFile(const std::string &logFileName, bool showInConsole = true);
 		
 		void close();
 

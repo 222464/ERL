@@ -11,12 +11,23 @@ Main
 #include <neat/NetworkPhenotype.h>
 #include <erl/platform/Field2DGenesToCL.h>
 
+#include <SFML/Window.hpp>
+#include <SFML/Graphics.hpp>
+
 #include <time.h>
 #include <iostream>
 #include <fstream>
 
 int main() {
 	std::cout << "Welcome to ERL. Version " << ERL_VERSION << std::endl;
+
+	erl::Logger logger;
+
+	logger.createWithFile("erlLog.txt");
+
+	erl::ComputeSystem cs;
+
+	cs.create(logger);
 
 	std::mt19937 generator(time(nullptr));
 
@@ -44,11 +55,27 @@ int main() {
 
 	genes.initialize(2, 2, &settings, functionChances, innovNum, generator);
 
-	std::ofstream toFile("testOutput.txt");
+	erl::Field2D field;
 
-	toFile << erl::field2DGenesNodeUpdateToCL(genes, functionNames, 10, 10, 2);
+	// Load random texture
+	sf::Image sfmlImage;
 
-	toFile.close();
+	if (!sfmlImage.loadFromFile("random.bmp")) {
+		logger << "Could not load random.bmp!" << erl::endl;
+	}
+
+	erl::SoftwareImage2D<sf::Color> softImage;
+
+	softImage.reset(sfmlImage.getSize().x, sfmlImage.getSize().y);
+
+	for (int x = 0; x < sfmlImage.getSize().x; x++)
+	for (int y = 0; y < sfmlImage.getSize().y; y++) {
+		softImage.setPixel(x, y, sfmlImage.getPixel(x, y));
+	}
+
+	std::shared_ptr<cl::Image2D> randomImage(new cl::Image2D(cs.getContext(), CL_MEM_READ_ONLY | CL_MEM_COPY_HOST_PTR, cl::ImageFormat(CL_RGBA, GL_UNSIGNED_BYTE), softImage.getWidth(), softImage.getHeight(), 0, softImage.getData()));
+
+	field.create(genes, cs, 10, 10, 2, 2, 2, randomImage, functions, functionNames, -1.0f, 1.0f, generator, logger);
 
 	system("pause");
 

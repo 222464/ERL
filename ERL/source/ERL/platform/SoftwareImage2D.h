@@ -23,7 +23,7 @@ namespace erl {
 			return _data[x + y * _width];
 		}
 
-		T setPixel(int x, int y, T value) const {
+		void setPixel(int x, int y, const T &value) {
 			_data[x + y * _width] = value;
 		}
 

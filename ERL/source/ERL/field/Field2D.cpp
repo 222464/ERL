@@ -1,9 +1,20 @@
 #include <erl/field/Field2D.h>
 
+#include <erl/platform/Field2DGenesToCL.h>
+
 using namespace erl;
 
-void Field2D::create(Field2DGenes &genes, ComputeSystem &cs, int width, int height, int connectionRadius, int numInputs, int numOutputs, const std::shared_ptr<cl::Image2D> &randomImage,
-	const std::vector<std::function<float(float)>> &activationFunctions, float minRecInit, float maxRecInit, float inputRadius, std::mt19937 &generator) {
+Field2D::Field2D()
+{}
+
+void Field2D::create(Field2DGenes &genes, ComputeSystem &cs, int width, int height, int connectionRadius, int numInputs, int numOutputs,
+	const std::shared_ptr<cl::Image2D> &randomImage,
+	const std::vector<std::function<float(float)>> &activationFunctions, const std::vector<std::string> &activationFunctionNames,
+	float minRecInit, float maxRecInit, std::mt19937 &generator,
+	Logger &logger)
+{
+	cl_int err;
+
 	_currentReadBufferIndex = 0;
 	_currentWriteBufferIndex = 1;
 
@@ -15,6 +26,12 @@ void Field2D::create(Field2DGenes &genes, ComputeSystem &cs, int width, int heig
 	_width = width;
 	_height = height;
 	_connectionRadius = connectionRadius;
+
+	_inputs.clear();
+	_inputs.assign(numInputs, 0.0f);
+
+	_outputs.clear();
+	_outputs.assign(numOutputs, 0.0f);
 
 	// Create phenotypes for rules
 	_connectionPhenotype.create(genes.getConnectionUpdateGenotype());
@@ -160,17 +177,27 @@ void Field2D::create(Field2DGenes &genes, ComputeSystem &cs, int width, int heig
 		}
 	}
 
-	_typeImage = cl::Image2D(cs.getContext(), CL_MEM_READ_ONLY, cl::ImageFormat(CL_RG, GL_UNSIGNED_BYTE), _width, _height, 0, typeSoftwareImage.getData());
+	_typeImage = cl::Image2D(cs.getContext(), CL_MEM_READ_ONLY | CL_MEM_COPY_HOST_PTR, cl::ImageFormat(CL_RG, GL_UNSIGNED_BYTE), _width, _height, 0, typeSoftwareImage.getData());
 
 	std::vector<float> outputBuffer(getNumOutputs() * _nodeOutputSize, 0.0f);
 
 	_outputImage = cl::Image1D(cs.getContext(), CL_MEM_WRITE_ONLY, cl::ImageFormat(CL_R, CL_FLOAT), getNumOutputs(), &outputBuffer[0]);
 
 	// Create OpenCL buffers
-	_buffers[0] = cl::Buffer(cs.getContext(), CL_MEM_READ_WRITE, _bufferSize * sizeof(float), &buffer[0]);
-	_buffers[1] = cl::Buffer(cs.getContext(), CL_MEM_READ_WRITE, _bufferSize * sizeof(float), &buffer[1]);
+	_buffers[0] = cl::Buffer(cs.getContext(), CL_MEM_READ_WRITE | CL_MEM_COPY_HOST_PTR, _bufferSize * sizeof(float), &buffer[0]);
+	_buffers[1] = cl::Buffer(cs.getContext(), CL_MEM_READ_WRITE | CL_MEM_COPY_HOST_PTR, _bufferSize * sizeof(float), &buffer[1]);
+
+	_program = cl::Program(cs.getContext(), field2DGenesNodeUpdateToCL(genes, *this, _connectionPhenotype, _nodePhenotype, _connectionData, _nodeData, activationFunctionNames, _width, _height, _connectionRadius, numInputs, numOutputs));
+
+	if (_program.build({ cs.getDevice() }) != CL_SUCCESS) {
+		logger << " Error building: " << _program.getBuildInfo<CL_PROGRAM_BUILD_LOG>(cs.getDevice()) << erl::endl;
+		abort();
+	}
 
 	_kernelFunctor = cl::make_kernel<cl::Buffer&, cl::Buffer&, cl::Image2D&, cl::Image1D&, cl::Image1D&, cl::Image2D&, RandomSeed, float>(_program, "nodeAdd");
+
+	_encoderPhenotypes.resize(numInputs);
+	_decoderPhenotypes.resize(numOutputs);
 
 	for (int i = 0; i < numInputs; i++)
 		_encoderPhenotypes[i].create(genes.getEncoderGenotype());
@@ -202,7 +229,7 @@ void Field2D::update(float reward, ComputeSystem &cs, const std::vector<std::fun
 			inputBuffer[inputBufferIndex++] = _encoderPhenotypes[i].getOutput(j)._output;
 	}
 
-	_inputImage = cl::Image1D(cs.getContext(), CL_MEM_READ_ONLY, cl::ImageFormat(CL_R, CL_FLOAT), getNumInputs(), &_inputs[0]);
+	_inputImage = cl::Image1D(cs.getContext(), CL_MEM_READ_ONLY | CL_MEM_COPY_HOST_PTR, cl::ImageFormat(CL_R, CL_FLOAT), getNumInputs(), &_inputs[0]);
 
 	// Execute kernel
 	_kernelFunctor(cl::EnqueueArgs(_numNodes), _buffers[_currentReadBufferIndex], _buffers[_currentWriteBufferIndex], _typeImage, _inputImage, _outputImage, *_randomImage, seed, reward);

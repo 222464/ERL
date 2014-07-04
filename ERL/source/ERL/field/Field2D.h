@@ -26,7 +26,7 @@ namespace erl {
 
 	private:
 		std::array<cl::Buffer, 2> _buffers;
-		cl::make_kernel<cl::Buffer&, cl::Buffer&, cl::Image2D&, cl::Image1D&, cl::Image1D&, cl::Image2D&, RandomSeed, float> _kernelFunctor;
+		std::function<cl::Event(const cl::EnqueueArgs&, cl::Buffer&, cl::Buffer&, cl::Image2D&, cl::Image1D&, cl::Image1D&, cl::Image2D&, RandomSeed, float)> _kernelFunctor;
 
 		unsigned char _currentReadBufferIndex;
 		unsigned char _currentWriteBufferIndex;
@@ -69,8 +69,13 @@ namespace erl {
 		std::vector<neat::NetworkPhenotype> _decoderPhenotypes;
 
 	public:
-		void create(Field2DGenes &genes, ComputeSystem &cs, int width, int height, int connectionRadius, int numInputs, int numOutputs, const std::shared_ptr<cl::Image2D> &randomImage,
-			const std::vector<std::function<float(float)>> &activationFunctions, float minRecInit, float maxRecInit, float inputRadius, std::mt19937 &generator);
+		Field2D();
+
+		void create(Field2DGenes &genes, ComputeSystem &cs, int width, int height, int connectionRadius, int numInputs, int numOutputs,
+			const std::shared_ptr<cl::Image2D> &randomImage,
+			const std::vector<std::function<float(float)>> &activationFunctions, const std::vector<std::string> &activationFunctionNames,
+			float minRecInit, float maxRecInit, std::mt19937 &generator,
+			Logger &logger);
 
 		void update(float reward, ComputeSystem &cs, const std::vector<std::function<float(float)>> &activationFunctions, std::mt19937 &generator);
 
