@@ -177,11 +177,11 @@ void Field2D::create(Field2DGenes &genes, ComputeSystem &cs, int width, int heig
 		}
 	}
 
-	_typeImage = cl::Image2D(cs.getContext(), CL_MEM_READ_ONLY | CL_MEM_COPY_HOST_PTR, cl::ImageFormat(CL_RG, GL_UNSIGNED_BYTE), _width, _height, 0, typeSoftwareImage.getData());
+	_typeImage = cl::Image2D(cs.getContext(), CL_MEM_READ_ONLY | CL_MEM_COPY_HOST_PTR, cl::ImageFormat(CL_RG, CL_UNSIGNED_INT8), _width, _height, 0, typeSoftwareImage.getData());
 
 	std::vector<float> outputBuffer(getNumOutputs() * _nodeOutputSize, 0.0f);
 
-	_outputImage = cl::Image1D(cs.getContext(), CL_MEM_WRITE_ONLY, cl::ImageFormat(CL_R, CL_FLOAT), getNumOutputs(), &outputBuffer[0]);
+	_outputImage = cl::Image1D(cs.getContext(), CL_MEM_WRITE_ONLY | CL_MEM_COPY_HOST_PTR, cl::ImageFormat(CL_R, CL_FLOAT), getNumOutputs(), &outputBuffer[0]);
 
 	// Create OpenCL buffers
 	_buffers[0] = cl::Buffer(cs.getContext(), CL_MEM_READ_WRITE | CL_MEM_COPY_HOST_PTR, _bufferSize * sizeof(float), &buffer[0]);
@@ -189,12 +189,14 @@ void Field2D::create(Field2DGenes &genes, ComputeSystem &cs, int width, int heig
 
 	_program = cl::Program(cs.getContext(), field2DGenesNodeUpdateToCL(genes, *this, _connectionPhenotype, _nodePhenotype, _connectionData, _nodeData, activationFunctionNames, _width, _height, _connectionRadius, numInputs, numOutputs));
 
-	if (_program.build({ cs.getDevice() }) != CL_SUCCESS) {
+	if (_program.build(std::vector<cl::Device>(1, cs.getDevice())) != CL_SUCCESS) {
 		logger << " Error building: " << _program.getBuildInfo<CL_PROGRAM_BUILD_LOG>(cs.getDevice()) << erl::endl;
 		abort();
 	}
 
-	_kernelFunctor = cl::make_kernel<cl::Buffer&, cl::Buffer&, cl::Image2D&, cl::Image1D&, cl::Image1D&, cl::Image2D&, RandomSeed, float>(_program, "nodeAdd");
+	//_kernelFunctor = cl::make_kernel<cl::Buffer&, cl::Buffer&, cl::Image2D&, cl::Image1D&, cl::Image1D&, cl::Image2D&, RandomSeed, float>(_program, "nodeUpdate");
+
+	_kernel = cl::Kernel(_program, "nodeUpdate");
 
 	_encoderPhenotypes.resize(numInputs);
 	_decoderPhenotypes.resize(numOutputs);
@@ -214,7 +216,7 @@ void Field2D::update(float reward, ComputeSystem &cs, const std::vector<std::fun
 
 	seed._x = distSeedX(generator);
 	seed._y = distSeedY(generator);
-
+	
 	// Create input image
 	std::vector<float> inputBuffer(getNumInputs() * _connectionResponseSize);
 
@@ -232,7 +234,18 @@ void Field2D::update(float reward, ComputeSystem &cs, const std::vector<std::fun
 	_inputImage = cl::Image1D(cs.getContext(), CL_MEM_READ_ONLY | CL_MEM_COPY_HOST_PTR, cl::ImageFormat(CL_R, CL_FLOAT), getNumInputs(), &_inputs[0]);
 
 	// Execute kernel
-	_kernelFunctor(cl::EnqueueArgs(_numNodes), _buffers[_currentReadBufferIndex], _buffers[_currentWriteBufferIndex], _typeImage, _inputImage, _outputImage, *_randomImage, seed, reward);
+	//_kernelFunctor(cl::EnqueueArgs(cl::NDRange(_numNodes)), _buffers[_currentReadBufferIndex], _buffers[_currentWriteBufferIndex], _typeImage, _inputImage, _outputImage, *_randomImage, seed, reward).wait();
+
+	_kernel.setArg(0, _buffers[_currentReadBufferIndex]);
+	_kernel.setArg(1, _buffers[_currentWriteBufferIndex]);
+	_kernel.setArg(2, _typeImage);
+	_kernel.setArg(3, _inputImage);
+	_kernel.setArg(4, _outputImage);
+	_kernel.setArg(5, *_randomImage);
+	_kernel.setArg(6, seed);
+	_kernel.setArg(7, reward);
+
+	cs.getQueue().enqueueNDRangeKernel(_kernel, cl::NullRange, cl::NDRange(_numNodes));
 
 	// Gather outputs
 	cl::size_t<3> origin;
@@ -242,12 +255,14 @@ void Field2D::update(float reward, ComputeSystem &cs, const std::vector<std::fun
 
 	cl::size_t<3> region;
 	region[0] = getNumOutputs();
-	region[1] = 0;
-	region[2] = 0;
+	region[1] = 1;
+	region[2] = 1;
 
 	std::vector<float> outputBuffer(getNumOutputs() * _nodeOutputSize);
 
 	cs.getQueue().enqueueReadImage(_outputImage, CL_TRUE, origin, region, 0, 0, &outputBuffer[0]);
+
+	cs.getQueue().finish();
 
 	// Decode
 	int outputBufferIndex = 0;

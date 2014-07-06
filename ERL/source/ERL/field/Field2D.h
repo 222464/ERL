@@ -26,12 +26,13 @@ namespace erl {
 
 	private:
 		std::array<cl::Buffer, 2> _buffers;
-		std::function<cl::Event(const cl::EnqueueArgs&, cl::Buffer&, cl::Buffer&, cl::Image2D&, cl::Image1D&, cl::Image1D&, cl::Image2D&, RandomSeed, float)> _kernelFunctor;
+		//std::function<cl::Event(const cl::EnqueueArgs&, cl::Buffer&, cl::Buffer&, cl::Image2D&, cl::Image1D&, cl::Image1D&, cl::Image2D&, RandomSeed, float)> _kernelFunctor;
 
 		unsigned char _currentReadBufferIndex;
 		unsigned char _currentWriteBufferIndex;
 
 		cl::Program _program;
+		cl::Kernel _kernel;
 
 		cl::Image2D _typeImage;
 

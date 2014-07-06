@@ -10,5 +10,5 @@ void kernel adapt(global const float* source, write_only image2d_t destination, 
 
 	float color0 = source[lPos * nodeAndConnectionsSize + 0];
 
-	write_imagef(destination, pixelPos, (float4)(color0));
+	write_imagef(destination, pixelPos, (float4)(0.5, 0.2, 0.8, 1.0));
 }

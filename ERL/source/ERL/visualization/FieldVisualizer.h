@@ -17,17 +17,18 @@ namespace erl {
 	private:
 		// Visualization adapter (field to texture)
 		cl::Program _adapterProgram;
-		std::function<cl::Event(const cl::EnqueueArgs&, cl::Buffer&, cl::ImageGL&, int, int, int)> _adapterKernelFunctor;
-		cl::ImageGL _adaptedImage;
-		sf::Texture _adaptedTexture;
+		cl::Kernel _adapterKernel;
+		//std::function<cl::Event(const cl::EnqueueArgs&, cl::Buffer&, cl::Image2D&, int, int, int)> _adapterKernelFunctor;
+		cl::Image2D _adaptedImage;
+		SoftwareImage2D<sf::Color> _adaptedSoftImage;
 
 	public:
 		bool create(ComputeSystem &cs, const std::string &adapterFileName, const Field2D &field, Logger &logger);
 
-		void update(Field2D &field);
+		void update(ComputeSystem &cs, Field2D &field);
 
-		sf::Texture &getTexture() {
-			return _adaptedTexture;
+		const SoftwareImage2D<sf::Color> &getSoftImage() {
+			return _adaptedSoftImage;
 		}
 	};
 }

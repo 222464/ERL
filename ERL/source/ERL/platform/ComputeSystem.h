@@ -7,10 +7,11 @@ Platform
 #pragma once
 
 #include <erl/platform/Logger.h>
+#include <neat/Uncopyable.h>
 #include <CL/cl.hpp>
 
 namespace erl {
-	class ComputeSystem {
+	class ComputeSystem : public Uncopyable {
 	private:
 		cl::Platform _platform;
 		cl::Device _device;

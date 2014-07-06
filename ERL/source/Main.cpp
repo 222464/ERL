@@ -74,7 +74,7 @@ int main() {
 		softImage.setPixel(x, y, sfmlImage.getPixel(x, y));
 	}
 
-	std::shared_ptr<cl::Image2D> randomImage(new cl::Image2D(cs.getContext(), CL_MEM_READ_ONLY | CL_MEM_COPY_HOST_PTR, cl::ImageFormat(CL_RGBA, GL_UNSIGNED_BYTE), softImage.getWidth(), softImage.getHeight(), 0, softImage.getData()));
+	std::shared_ptr<cl::Image2D> randomImage(new cl::Image2D(cs.getContext(), CL_MEM_READ_ONLY | CL_MEM_COPY_HOST_PTR, cl::ImageFormat(CL_RGBA, CL_UNSIGNED_INT8), softImage.getWidth(), softImage.getHeight(), 0, softImage.getData()));
 
 	field.create(genes, cs, 10, 10, 2, 2, 2, randomImage, functions, functionNames, -1.0f, 1.0f, generator, logger);
 
@@ -84,9 +84,18 @@ int main() {
 
 	fv.create(cs, "adapter.cl", field, logger);
 
-	fv.update(field);
+	fv.update(cs, field);
 
-	fv.getTexture().copyToImage().saveToFile("result.png");
+	sf::Image sfImage;
+
+	sfImage.create(field.getWidth(), field.getHeight());
+
+	for (int x = 0; x < field.getWidth(); x++)
+	for (int y = 0; y < field.getHeight(); y++) {
+		sfImage.setPixel(x, y, fv.getSoftImage().getPixel(x, y));
+	}
+
+	sfImage.saveToFile("result.png");
 
 	system("pause");
 
