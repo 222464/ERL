@@ -87,6 +87,14 @@ namespace erl {
 			return _nodeData;
 		}
 
+		int getConnectionResponseSize() const {
+			return _connectionResponseSize;
+		}
+
+		int getNodeOutputSize() const {
+			return _nodeOutputSize;
+		}
+
 		int getWidth() const {
 			return _width;
 		}
@@ -141,6 +149,10 @@ namespace erl {
 
 		float getOutput(int index) const {
 			return _outputs[index];
+		}
+
+		cl::Buffer &getBuffer() {
+			return _buffers[_currentWriteBufferIndex];
 		}
 	};
 }

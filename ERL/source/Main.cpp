@@ -10,6 +10,7 @@ Main
 #include <neat/NetworkGenotype.h>
 #include <neat/NetworkPhenotype.h>
 #include <erl/platform/Field2DGenesToCL.h>
+#include <erl/visualization/FieldVisualizer.h>
 
 #include <SFML/Window.hpp>
 #include <SFML/Graphics.hpp>
@@ -76,6 +77,16 @@ int main() {
 	std::shared_ptr<cl::Image2D> randomImage(new cl::Image2D(cs.getContext(), CL_MEM_READ_ONLY | CL_MEM_COPY_HOST_PTR, cl::ImageFormat(CL_RGBA, GL_UNSIGNED_BYTE), softImage.getWidth(), softImage.getHeight(), 0, softImage.getData()));
 
 	field.create(genes, cs, 10, 10, 2, 2, 2, randomImage, functions, functionNames, -1.0f, 1.0f, generator, logger);
+
+	field.update(0.0f, cs, functions, generator);
+
+	erl::FieldVisualizer fv;
+
+	fv.create(cs, "adapter.cl", field, logger);
+
+	fv.update(field);
+
+	fv.getTexture().copyToImage().saveToFile("result.png");
 
 	system("pause");
 
