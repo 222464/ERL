@@ -4,7 +4,7 @@
 
 using namespace erl;
 
-void ComputeSystem::create() {
+void ComputeSystem::create(DeviceType type) {
 	std::vector<cl::Platform> allPlatforms;
 	cl::Platform::get(&allPlatforms);
 
@@ -12,7 +12,17 @@ void ComputeSystem::create() {
 
 	std::vector<cl::Device> allDevices;
 
-	_platform.getDevices(CL_DEVICE_TYPE_ALL, &allDevices);
+	switch (type) {
+	case _cpu:
+		_platform.getDevices(CL_DEVICE_TYPE_CPU, &allDevices);
+		break;
+	case _gpu:
+		_platform.getDevices(CL_DEVICE_TYPE_GPU, &allDevices);
+		break;
+	case _both:
+		_platform.getDevices(CL_DEVICE_TYPE_ALL, &allDevices);
+		break;
+	}
 
 	_device = allDevices.front();
 
@@ -21,7 +31,7 @@ void ComputeSystem::create() {
 	_queue = cl::CommandQueue(_context, _device);
 }
 
-void ComputeSystem::create(Logger &logger) {
+void ComputeSystem::create(DeviceType type, Logger &logger) {
 	std::vector<cl::Platform> allPlatforms;
 	cl::Platform::get(&allPlatforms);
 
@@ -36,7 +46,17 @@ void ComputeSystem::create(Logger &logger) {
 
 	std::vector<cl::Device> allDevices;
 
-	_platform.getDevices(CL_DEVICE_TYPE_ALL, &allDevices);
+	switch (type) {
+	case _cpu:
+		_platform.getDevices(CL_DEVICE_TYPE_CPU, &allDevices);
+		break;
+	case _gpu:
+		_platform.getDevices(CL_DEVICE_TYPE_GPU, &allDevices);
+		break;
+	case _both:
+		_platform.getDevices(CL_DEVICE_TYPE_ALL, &allDevices);
+		break;
+	}
 
 	if (allDevices.empty()) {
 		logger << " No devices found. Check your OpenCL installation." << endl;

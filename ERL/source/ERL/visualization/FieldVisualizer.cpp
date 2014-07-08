@@ -42,7 +42,7 @@ bool FieldVisualizer::create(ComputeSystem &cs, const std::string &adapterFileNa
 
 	_adaptedSoftImage.reset(field.getWidth(), field.getHeight());
 
-	_adaptedImage = cl::Image2D(cs.getContext(), CL_MEM_READ_WRITE, cl::ImageFormat(CL_RGBA, CL_UNSIGNED_INT8), field.getWidth(), field.getHeight());
+	_adaptedImage = cl::Image2D(cs.getContext(), CL_MEM_READ_WRITE, cl::ImageFormat(CL_RGBA, CL_UNORM_INT8), field.getWidth(), field.getHeight());
 
 	return true;
 }

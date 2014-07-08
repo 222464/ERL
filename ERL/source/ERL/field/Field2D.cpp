@@ -47,7 +47,7 @@ void Field2D::create(Field2DGenes &genes, ComputeSystem &cs, int width, int heig
 	_numConnections = _connectionDimensionSize * _connectionDimensionSize;
 
 	_nodeSize = genes.getNodeOutputSize() + 1 + _nodeData._numRecurrentSourceNodes; // + 1 for type
-	_connectionSize = genes.getConnectionResponseSize() + _connectionData._numRecurrentSourceNodes;
+	_connectionSize = _connectionData._numRecurrentSourceNodes;
 	_nodeAndConnectionsSize = _nodeSize + _connectionSize * _numConnections;
 
 	_numNodes = _width * _height;
@@ -115,9 +115,6 @@ void Field2D::create(Field2DGenes &genes, ComputeSystem &cs, int width, int heig
 
 		// Connections
 		for (int ci = 0; ci < _numConnections; ci++) {
-			for (int ri = 0; ri < genes.getConnectionResponseSize(); ri++)
-				buffer[bufferIndex++] = 0.0f;
-
 			// Initialize recurrent data
 			for (int ri = 0; ri < _connectionData._numRecurrentSourceNodes; ri++) {
 				std::uniform_real_distribution<float> distInit(std::get<0>(genes._recurrentConnectionInitBounds[ri]), std::get<1>(genes._recurrentConnectionInitBounds[ri]));
@@ -185,7 +182,7 @@ void Field2D::create(Field2DGenes &genes, ComputeSystem &cs, int width, int heig
 
 	// Create OpenCL buffers
 	_buffers[0] = cl::Buffer(cs.getContext(), CL_MEM_READ_WRITE | CL_MEM_COPY_HOST_PTR, _bufferSize * sizeof(float), &buffer[0]);
-	_buffers[1] = cl::Buffer(cs.getContext(), CL_MEM_READ_WRITE | CL_MEM_COPY_HOST_PTR, _bufferSize * sizeof(float), &buffer[1]);
+	_buffers[1] = cl::Buffer(cs.getContext(), CL_MEM_READ_WRITE | CL_MEM_COPY_HOST_PTR, _bufferSize * sizeof(float), &buffer[0]);
 
 	_program = cl::Program(cs.getContext(), field2DGenesNodeUpdateToCL(genes, *this, _connectionPhenotype, _nodePhenotype, _connectionData, _nodeData, activationFunctionNames, _width, _height, _connectionRadius, numInputs, numOutputs));
 
@@ -208,15 +205,12 @@ void Field2D::create(Field2DGenes &genes, ComputeSystem &cs, int width, int heig
 		_decoderPhenotypes[i].create(genes.getDecoderGenotype());
 }
 
-void Field2D::update(float reward, ComputeSystem &cs, const std::vector<std::function<float(float)>> &activationFunctions, std::mt19937 &generator) {
+void Field2D::update(float reward, ComputeSystem &cs, const std::vector<std::function<float(float)>> &activationFunctions, int substeps, std::mt19937 &generator) {
 	std::uniform_real_distribution<float> distSeedX(0.0f, static_cast<float>(_width));
 	std::uniform_real_distribution<float> distSeedY(0.0f, static_cast<float>(_height));
-
-	RandomSeed seed;
-
-	seed._x = distSeedX(generator);
-	seed._y = distSeedY(generator);
 	
+	//reward = 0.0f;
+
 	// Create input image
 	std::vector<float> inputBuffer(getNumInputs() * _connectionResponseSize);
 
@@ -235,17 +229,28 @@ void Field2D::update(float reward, ComputeSystem &cs, const std::vector<std::fun
 
 	// Execute kernel
 	//_kernelFunctor(cl::EnqueueArgs(cl::NDRange(_numNodes)), _buffers[_currentReadBufferIndex], _buffers[_currentWriteBufferIndex], _typeImage, _inputImage, _outputImage, *_randomImage, seed, reward).wait();
+	for (int s = 0; s < substeps; s++) {
+		RandomSeed seed;
+		
+		seed._x = distSeedX(generator);
+		seed._y = distSeedY(generator);
 
-	_kernel.setArg(0, _buffers[_currentReadBufferIndex]);
-	_kernel.setArg(1, _buffers[_currentWriteBufferIndex]);
-	_kernel.setArg(2, _typeImage);
-	_kernel.setArg(3, _inputImage);
-	_kernel.setArg(4, _outputImage);
-	_kernel.setArg(5, *_randomImage);
-	_kernel.setArg(6, seed);
-	_kernel.setArg(7, reward);
+		_kernel.setArg(0, _buffers[_currentReadBufferIndex]);
+		_kernel.setArg(1, _buffers[_currentWriteBufferIndex]);
+		_kernel.setArg(2, _typeImage);
+		_kernel.setArg(3, _inputImage);
+		_kernel.setArg(4, _outputImage);
+		_kernel.setArg(5, *_randomImage);
+		_kernel.setArg(6, seed);
+		_kernel.setArg(7, reward);
 
-	cs.getQueue().enqueueNDRangeKernel(_kernel, cl::NullRange, cl::NDRange(_numNodes));
+		cs.getQueue().enqueueNDRangeKernel(_kernel, cl::NullRange, cl::NDRange(_numNodes));
+
+		// Swap buffer read/write
+		std::swap(_currentReadBufferIndex, _currentWriteBufferIndex);
+
+		cs.getQueue().finish();
+	}
 
 	// Gather outputs
 	cl::size_t<3> origin;
@@ -275,7 +280,4 @@ void Field2D::update(float reward, ComputeSystem &cs, const std::vector<std::fun
 
 		_outputs[i] = _decoderPhenotypes[i].getOutput(0)._output;
 	}
-	
-	// Swap buffer read/write
-	std::swap(_currentReadBufferIndex, _currentWriteBufferIndex);
 }

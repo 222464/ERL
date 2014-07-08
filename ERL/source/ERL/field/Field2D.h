@@ -78,7 +78,7 @@ namespace erl {
 			float minRecInit, float maxRecInit, std::mt19937 &generator,
 			Logger &logger);
 
-		void update(float reward, ComputeSystem &cs, const std::vector<std::function<float(float)>> &activationFunctions, std::mt19937 &generator);
+		void update(float reward, ComputeSystem &cs, const std::vector<std::function<float(float)>> &activationFunctions, int substeps, std::mt19937 &generator);
 
 		const neat::NetworkPhenotype::RuleData &getConnectionData() const {
 			return _connectionData;

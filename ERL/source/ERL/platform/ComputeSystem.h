@@ -12,6 +12,11 @@ Platform
 
 namespace erl {
 	class ComputeSystem : public Uncopyable {
+	public:
+		enum DeviceType {
+			_cpu, _gpu, _both
+		};
+
 	private:
 		cl::Platform _platform;
 		cl::Device _device;
@@ -19,8 +24,8 @@ namespace erl {
 		cl::CommandQueue _queue;
 
 	public:
-		void create();
-		void create(Logger &logger);
+		void create(DeviceType type);
+		void create(DeviceType type, Logger &logger);
 
 		cl::Platform &getPlatform() {
 			return _platform;

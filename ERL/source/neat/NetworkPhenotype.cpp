@@ -92,7 +92,9 @@ void NetworkPhenotype::create(const NetworkGenotype &genotype) {
 	}
 
 	// Set node data
-	for (size_t i = getNumInputs(); i < genotype.getNodeDataSize(); i++) {
+	size_t totalNumNodes = getNumInputs() + getNumHidden() + getNumOutputs();
+
+	for (size_t i = getNumInputs(); i < totalNumNodes; i++) {
 		const NetworkGenotype::NodeData &data = genotype.getNodeData(i);
 
 		Neuron &node = getNeuronNode(i);

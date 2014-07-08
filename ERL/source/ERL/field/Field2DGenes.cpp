@@ -150,3 +150,61 @@ float Field2DGenes::getSimilarity(const neat::EvolverSettings* pSettings, const 
 		_encoderGenotype.getSimilarity(pSettings, functionChances, &pF2DOther->_encoderGenotype) +
 		_decoderGenotype.getSimilarity(pSettings, functionChances, &pF2DOther->_decoderGenotype);
 }
+
+void Field2DGenes::readFromStream(std::istream &is) {
+	is >> _connectionResponseSize >> _nodeOutputSize;
+
+	int numRecurrentNode;
+	int numRecurrentConnection;
+
+	is >> numRecurrentNode >> numRecurrentConnection;
+
+	_recurrentNodeInitBounds.resize(numRecurrentNode);
+	_recurrentConnectionInitBounds.resize(numRecurrentConnection);
+
+	for (int i = 0; i < numRecurrentNode; i++) {
+		float v0, v1;
+		is >> v0 >> v1;
+		_recurrentNodeInitBounds[i] = std::make_tuple(v0, v1);
+	}
+
+	for (int i = 0; i < numRecurrentConnection; i++) {
+		float v0, v1;
+		is >> v0 >> v1;
+		_recurrentConnectionInitBounds[i] = std::make_tuple(v0, v1);
+	}
+
+	_connectionUpdateGenotype.readFromStream(is);
+	_activationUpdateGenotype.readFromStream(is);
+	_typeSetGenotype.readFromStream(is);
+	_encoderGenotype.readFromStream(is);
+	_decoderGenotype.readFromStream(is);
+}
+
+void Field2DGenes::writeToStream(std::ostream &os) const {
+	os << _connectionResponseSize << " " << _nodeOutputSize << std::endl;
+
+	os << _recurrentNodeInitBounds.size() << " " << _recurrentConnectionInitBounds.size() << std::endl;
+
+	for (int i = 0; i < _recurrentNodeInitBounds.size(); i++) {
+		os << std::get<0>(_recurrentNodeInitBounds[i]) << " " << std::get<1>(_recurrentNodeInitBounds[i]) << " ";
+	}
+
+	os << std::endl;
+
+	for (int i = 0; i < _recurrentConnectionInitBounds.size(); i++) {
+		os << std::get<0>(_recurrentConnectionInitBounds[i]) << " " << std::get<1>(_recurrentConnectionInitBounds[i]) << " ";
+	}
+
+	os << std::endl;
+
+	_connectionUpdateGenotype.writeToStream(os);
+	os << std::endl;
+	_activationUpdateGenotype.writeToStream(os);
+	os << std::endl;
+	_typeSetGenotype.writeToStream(os);
+	os << std::endl;
+	_encoderGenotype.writeToStream(os);
+	os << std::endl;
+	_decoderGenotype.writeToStream(os);
+}

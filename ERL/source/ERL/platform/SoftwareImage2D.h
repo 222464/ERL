@@ -31,11 +31,11 @@ namespace erl {
 			return &_data[0];
 		}
 
-		int getWidth() {
+		int getWidth() const {
 			return _width;
 		}
 
-		int getHeight() {
+		int getHeight() const {
 			return _height;
 		}
 	};

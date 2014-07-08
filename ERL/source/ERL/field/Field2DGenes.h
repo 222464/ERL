@@ -59,6 +59,13 @@ namespace erl {
 			return _nodeOutputSize;
 		}
 
+		void readFromStream(std::istream &is);
+		void writeToStream(std::ostream &os) const;
+
+		static std::shared_ptr<neat::Evolvable> genotypeFactory() {
+			return std::shared_ptr<neat::Evolvable>(new Field2DGenes());
+		}
+
 		friend class Field2D;
 	};
 }

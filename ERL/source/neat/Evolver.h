@@ -41,10 +41,6 @@ namespace neat {
 		float _weightPerturbationChance;
 		float _disableGeneChance;
 
-		float _minInitWeight;
-		float _maxInitWeight;
-		float _minInitBias;
-		float _maxInitBias;
 		float _maxPerturbation;
 		float _changeFunctionChance;
 

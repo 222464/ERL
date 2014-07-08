@@ -539,7 +539,10 @@ void NetworkGenotype::mutateAddNode(float minWeight, float maxWeight, float minB
 	const size_t newNodeIndex = _connectionSet.getNumNodes(); // New node will be at back of vector
 
 	// Take random connection, split it, and insert the new node
-	assert(_connectionSet.getNumConnections() > 0);
+
+	// If there are no connections to split, something went wrong
+	if (_connectionSet.getNumConnections() == 0)
+		connectUnconnectedOutputs(minWeight, maxWeight, minBias, maxBias, functionChances, innovationNumber, generator);
 
 	std::uniform_int_distribution<int> distConnection(0, _connectionSet.getNumConnections() - 1);
 
@@ -769,10 +772,12 @@ void NetworkGenotype::crossover(const NetworkGenotype &otherParent, NetworkGenot
 				// Get pointer by advancing iterator
 				std::list<std::shared_ptr<ConnectionGene>>::iterator it = notMatchingHistoryConnectionGenes1.begin();
 
-				for (size_t j = 0; j < randIndex; j++, it++);
-
-				if ((*it)->_outIndex < child._numInputs)
-					continue;
+				for (size_t j = 0; j < randIndex; j++, it++) {
+					if ((*it)->_outIndex < child._numInputs) {
+						j++;
+						it++;
+					}
+				}
 
 				std::shared_ptr<ConnectionGene> connection(new ConnectionGene(*(*it)));
 
@@ -803,10 +808,12 @@ void NetworkGenotype::crossover(const NetworkGenotype &otherParent, NetworkGenot
 				// Get pointer by advancing iterator
 				std::list<std::shared_ptr<ConnectionGene>>::iterator it = otherParentInnovationNumbers.begin();
 
-				for (size_t j = 0; j < randIndex; j++, it++);
-
-				if ((*it)->_outIndex < child._numInputs)
-					continue;
+				for (size_t j = 0; j < randIndex; j++, it++) {
+					if ((*it)->_outIndex < child._numInputs) {
+						j++;
+						it++;
+					}
+				}
 
 				std::shared_ptr<ConnectionGene> connection(new ConnectionGene(*(*it)));
 
@@ -1031,6 +1038,8 @@ float NetworkGenotype::getSimilarity(const NetworkGenotype &other, float excessF
 
 void NetworkGenotype::initialize(size_t numInputs, size_t numOutputs, const EvolverSettings* pSettings, const std::vector<float> &functionChances, InnovationNumberType &innovationNumber, std::mt19937 &generator) {
 	initialize(numInputs, numOutputs, pSettings->_minWeight, pSettings->_maxWeight, pSettings->_minBias, pSettings->_maxBias, functionChances, innovationNumber, generator);
+
+	updateNumHiddenNeurons();
 }
 
 void NetworkGenotype::crossover(const EvolverSettings* pSettings, const std::vector<float> &functionChances, const Evolvable* pOtherParent, Evolvable* pChild, float fitnessForThis, float fitnessForOtherParent, InnovationNumberType &innovationNumber, std::mt19937 &generator) {
@@ -1038,6 +1047,8 @@ void NetworkGenotype::crossover(const EvolverSettings* pSettings, const std::vec
 	NetworkGenotype* pChildNetworkGenotype = static_cast<NetworkGenotype*>(pChild);
 	
 	crossover(*pOtherParentNetworkGenotype, *pChildNetworkGenotype, pSettings->_disableGeneChance, fitnessForThis, fitnessForOtherParent, pSettings->_minBias, pSettings->_maxBias, functionChances, generator);
+
+	updateNumHiddenNeurons();
 }
 
 void NetworkGenotype::mutate(const EvolverSettings* pSettings, const std::vector<float> &functionChances, InnovationNumberType &innovationNumber, std::mt19937 &generator) {
@@ -1052,6 +1063,8 @@ void NetworkGenotype::mutate(const EvolverSettings* pSettings, const std::vector
 	mutatePerturbWeight(pSettings->_weightPerturbationChance, pSettings->_maxPerturbation, generator);
 
 	mutateChangeFunction(pSettings->_changeFunctionChance, functionChances, generator);
+
+	updateNumHiddenNeurons();
 }
 
 float NetworkGenotype::getSimilarity(const EvolverSettings* pSettings, const std::vector<float> &functionChances, const Evolvable* pOther) {
@@ -1438,6 +1451,8 @@ void NetworkGenotype::connectUnconnectedInputs(float minWeight, float maxWeight,
 void NetworkGenotype::connectUnconnectedOutputs(float minWeight, float maxWeight, float minBias, float maxBias, const std::vector<float> &functionChances, InnovationNumberType &innovationNumber, std::mt19937 &generator) {
 	// ---------------------------------- Add "Missing" Connections for Inputs and Outputs ----------------------------------
 
+	updateNumHiddenNeurons();
+
 	const size_t numInputsHidden = _numInputs + _numHidden;
 
 	std::uniform_real_distribution<float> distWeight(minWeight, maxWeight);
@@ -1446,7 +1461,7 @@ void NetworkGenotype::connectUnconnectedOutputs(float minWeight, float maxWeight
 	for (size_t i = 0; i < _numOutputs; i++) {
 		const size_t outputIndex = numInputsHidden + i;
 
-		assert(outputIndex > 0);
+		assert(outputIndex > 0 && outputIndex < _connectionSet._nodes.size());
 
 		// Output isn't connected to anything, add some connections
 		if (_connectionSet._nodes[outputIndex]._connections.size() < _numInputs)
@@ -1495,7 +1510,7 @@ void NetworkGenotype::readFromStream(std::istream &is) {
 	_connectionSet._nodes.clear();
 
 	// Read number of inputs and outputs
-	is >> _numInputs >> _numOutputs;
+	is >> _numInputs >> _numOutputs >> _numHidden;
 
 	// Read number of connections and number of nodes
 	size_t numConnections, numNodes;
@@ -1525,11 +1540,13 @@ void NetworkGenotype::readFromStream(std::istream &is) {
 	// These nodes will have already been added when the connections were loaded
 	for (size_t i = 0; i < numNodes; i++)
 		is >> _connectionSet._nodes[i]._bias >> _connectionSet._nodes[i]._innovationNumber;
+
+	updateNumHiddenNeurons();
 }
 
 void NetworkGenotype::writeToStream(std::ostream &os) const {
 	// Write number of inputs and outputs
-	os << _numInputs << " " << _numOutputs << std::endl;
+	os << _numInputs << " " << _numOutputs << " " << _numHidden << std::endl;
 
 	// Write number of connections and number of nodes
 	os << _connectionSet.getNumConnections() << " " << _connectionSet.getNumNodes() << std::endl;
