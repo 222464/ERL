@@ -97,7 +97,7 @@ float ExperimentOR::evaluate(erl::Field2DGenes &fieldGenes, const neat::EvolverS
 		cl::flush();
 	}
 
-	std::cout << "Finished OR experiment with total reward of " << (reward - initReward) * std::min<float>(1.0f, std::max<float>(0.0f, (reward * reward))) << "." << std::endl;
+	std::cout << "Finished OR experiment with total reward of " << reward << "." << std::endl;
 
-	return (reward - initReward) * std::min<float>(1.0f, std::max<float>(0.0f, (reward * reward)));
+	return reward;
 }

@@ -47,7 +47,6 @@ int main() {
 	std::vector<float> functionChances(3);
 	std::vector<std::string> functionNames(3);
 	std::vector<std::function<float(float)>> functions(3);
-	neat::InnovationNumberType innovNum = 0;
 
 	functionChances[0] = 1.0f;
 	functionChances[1] = 1.0f;
@@ -119,6 +118,8 @@ int main() {
 
 	// ------------------------------------------- Testing -------------------------------------------
 
+	std::shared_ptr<neat::EvolverSettings> settings(new erl::Field2DEvolverSettings());
+
 	erl::Field2DGenes genes;
 
 	std::ifstream fromFile("erlBestResultSoFar.txt");
@@ -127,17 +128,23 @@ int main() {
 
 	fromFile.close();
 
+	//neat::InnovationNumberType innovNum;
+
+	//genes.initialize(2, 1, settings.get(), functionChances, innovNum, generator);
+
 	erl::Field2D field;
 
-	float sizeScalar = 800.0f / 128.0f;
+	float sizeScalar = 800.0f / 400.0f;
 
-	field.create(genes, cs, 128, 128, 2, 2, 1, randomImage, functions, functionNames, -1.0f, 1.0f, generator, logger);
+	field.create(genes, cs, 400, 400, 2, 2, 1, randomImage, functions, functionNames, -1.0f, 1.0f, generator, logger);
 
 	field.setInput(0, 10.0f);
 	field.setInput(1, 10.0f);
 
 	sf::RenderWindow window;
 	window.create(sf::VideoMode(800, 800), "ERL Test", sf::Style::Default);
+
+	window.setVerticalSyncEnabled(true);
 
 	bool quit = false;
 
@@ -169,11 +176,18 @@ int main() {
 		if (sf::Keyboard::isKeyPressed(sf::Keyboard::Escape))
 			quit = true;
 
+		float reward = 0.0f;
+
+		if (sf::Keyboard::isKeyPressed(sf::Keyboard::A))
+			reward = 1.0f;
+		else if (sf::Keyboard::isKeyPressed(sf::Keyboard::D))
+			reward = -1.0f;
+
 		// -------------------------------------------------------------------
 
 		window.clear();
 
-		field.update(0.0f, cs, functions, 1, generator);
+		field.update(reward, cs, functions, 1, generator);
 
 		fv.update(cs, field);
 

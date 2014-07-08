@@ -38,15 +38,15 @@ void floodForwardFindCalculateIntermediates(neat::NetworkPhenotype &phenotype, c
 					std::unordered_set<neat::NetworkPhenotype::Connection, neat::NetworkPhenotype::Connection>::iterator it = data.find(c);
 
 					if (it == data.end()) // Not recurrent connection
-						outputCode += std::to_string(neuron._inputs[i]._weight) + " * " + getOutputNodeString(phenotype, data, outgoingConnections, recurrentSourceNodes, functionNames, neuron._inputs[i]._inputOffset);
+						outputCode += std::to_string(neuron._inputs[i]._weight) + "f * " + getOutputNodeString(phenotype, data, outgoingConnections, recurrentSourceNodes, functionNames, neuron._inputs[i]._inputOffset);
 					else
-						outputCode += std::to_string(neuron._inputs[i]._weight) + " * (*recurrent" + std::to_string(neuron._inputs[i]._inputOffset) + ")";
+						outputCode += std::to_string(neuron._inputs[i]._weight) + "f * (*recurrent" + std::to_string(neuron._inputs[i]._inputOffset) + ")";
 
 					//if (i != neuron._inputs.size() - 1)
 					outputCode += " + ";
 				}
 
-				outputCode += std::to_string(neuron._bias);
+				outputCode += std::to_string(neuron._bias) + "f";
 
 				outputCode += ";\n";
 
@@ -102,15 +102,15 @@ std::string getOutputNodeString(neat::NetworkPhenotype &phenotype, const std::un
 		std::unordered_set<neat::NetworkPhenotype::Connection, neat::NetworkPhenotype::Connection>::iterator it = data.find(c);
 
 		if (it == data.end()) // Not recurrent connection
-			sub += std::to_string(neuron._inputs[i]._weight) + " * " + getOutputNodeString(phenotype, data, outgoingConnections, recurrentSourceNodes, functionNames, neuron._inputs[i]._inputOffset);
+			sub += std::to_string(neuron._inputs[i]._weight) + "f * " + getOutputNodeString(phenotype, data, outgoingConnections, recurrentSourceNodes, functionNames, neuron._inputs[i]._inputOffset);
 		else
-			sub += std::to_string(neuron._inputs[i]._weight) + " * (*recurrent" + std::to_string(neuron._inputs[i]._inputOffset) + ")";
+			sub += std::to_string(neuron._inputs[i]._weight) + "f * (*recurrent" + std::to_string(neuron._inputs[i]._inputOffset) + ")";
 
 		//if (i != neuron._inputs.size() - 1)
 			sub += " + ";
 	}
 
-	sub += std::to_string(neuron._bias);
+	sub += std::to_string(neuron._bias) + "f";
 
 	return functionNames[neuron._activationFunctionIndex] + "(" + sub + ")";
 }

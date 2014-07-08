@@ -139,39 +139,40 @@ void Field2D::create(Field2DGenes &genes, ComputeSystem &cs, int width, int heig
 
 	// Set input types (positive index)
 	float inputSpacing = static_cast<float>(getHeight()) / static_cast<float>(getNumInputs());
+	float inputStartY = inputSpacing * 0.5f;
 
-	float startY = inputSpacing * 0.5f;
+	float outputSpacing = static_cast<float>(getHeight()) / static_cast<float>(getNumOutputs());
+	float outputStartY = outputSpacing * 0.5f;
 
 	unsigned char inputIndex = 0;
 	unsigned char outputIndex = 0;
 
-	float xi = inputSpacing * 0.5f;
+	float xi = inputSpacing * 0.25f;
 	int xii = static_cast<int>(xi + 0.5f);
 
-	float xo = inputSpacing * 0.5f;
+	float xo = getWidth() - outputSpacing * 0.25f;
 	int xoi = static_cast<int>(xo + 0.5f);
 
 	for (int i = 0; i < getNumInputs(); i++) {
-		float y = startY + i * inputSpacing;
+		float y = inputStartY + i * inputSpacing;
 		int yi = static_cast<int>(y + 0.5f);
 
-		// Input
-		{
-			IOSet ioset;
-			ioset._inputIndexPlusOne = inputIndex++;
-			ioset._outputIndexPlusOne = 0;
+		IOSet ioset;
+		ioset._inputIndexPlusOne = inputIndex++ + 1;
+		ioset._outputIndexPlusOne = 0;
 
-			typeSoftwareImage.setPixel(xii, yi, ioset);
-		}
+		typeSoftwareImage.setPixel(xii, yi, ioset);
+	}
 
-		// Output
-		{
-			IOSet ioset;
-			ioset._inputIndexPlusOne = 0;
-			ioset._outputIndexPlusOne = outputIndex++;
+	for (int i = 0; i < getNumOutputs(); i++) {
+		float y = outputStartY + i * outputSpacing;
+		int yi = static_cast<int>(y + 0.5f);
 
-			typeSoftwareImage.setPixel(xoi, yi, ioset);
-		}
+		IOSet ioset;
+		ioset._inputIndexPlusOne = 0;
+		ioset._outputIndexPlusOne = outputIndex++ + 1;
+
+		typeSoftwareImage.setPixel(xoi, yi, ioset);
 	}
 
 	_typeImage = cl::Image2D(cs.getContext(), CL_MEM_READ_ONLY | CL_MEM_COPY_HOST_PTR, cl::ImageFormat(CL_RG, CL_UNSIGNED_INT8), _width, _height, 0, typeSoftwareImage.getData());
@@ -225,7 +226,7 @@ void Field2D::update(float reward, ComputeSystem &cs, const std::vector<std::fun
 			inputBuffer[inputBufferIndex++] = _encoderPhenotypes[i].getOutput(j)._output;
 	}
 
-	_inputImage = cl::Image1D(cs.getContext(), CL_MEM_READ_ONLY | CL_MEM_COPY_HOST_PTR, cl::ImageFormat(CL_R, CL_FLOAT), getNumInputs(), &_inputs[0]);
+	_inputImage = cl::Image1D(cs.getContext(), CL_MEM_READ_ONLY | CL_MEM_COPY_HOST_PTR, cl::ImageFormat(CL_R, CL_FLOAT), getNumInputs(), &inputBuffer[0]);
 
 	// Execute kernel
 	//_kernelFunctor(cl::EnqueueArgs(cl::NDRange(_numNodes)), _buffers[_currentReadBufferIndex], _buffers[_currentWriteBufferIndex], _typeImage, _inputImage, _outputImage, *_randomImage, seed, reward).wait();
@@ -264,6 +265,8 @@ void Field2D::update(float reward, ComputeSystem &cs, const std::vector<std::fun
 	region[2] = 1;
 
 	std::vector<float> outputBuffer(getNumOutputs() * _nodeOutputSize);
+
+	cs.getQueue().finish();
 
 	cs.getQueue().enqueueReadImage(_outputImage, CL_TRUE, origin, region, 0, 0, &outputBuffer[0]);
 

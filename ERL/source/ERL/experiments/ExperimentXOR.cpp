@@ -97,7 +97,7 @@ float ExperimentXOR::evaluate(erl::Field2DGenes &fieldGenes, const neat::Evolver
 		cl::flush();
 	}
 
-	std::cout << "Finished XOR experiment with total reward of " << (reward - initReward) * std::min<float>(1.0f, std::max<float>(0.0f, (reward * reward))) << "." << std::endl;
-
-	return (reward - initReward) * std::min<float>(1.0f, std::max<float>(0.0f, (reward * reward)));
+	std::cout << "Finished XOR experiment with total reward of " << reward << "." << std::endl;
+	// * std::min<float>(1.0f, std::max<float>(0.0f, (reward * reward)))
+	return reward;
 }

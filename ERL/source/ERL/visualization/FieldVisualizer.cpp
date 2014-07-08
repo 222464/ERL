@@ -62,6 +62,8 @@ void FieldVisualizer::update(ComputeSystem &cs, Field2D &field) {
 
 	cs.getQueue().enqueueNDRangeKernel(_adapterKernel, cl::NullRange, cl::NDRange(field.getWidth(), field.getHeight()));
 
+	cs.getQueue().finish();
+
 	cl::size_t<3> origin;
 	origin[0] = 0;
 	origin[1] = 0;

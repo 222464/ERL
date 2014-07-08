@@ -1420,36 +1420,49 @@ void NetworkGenotype::setNumOutputsFullyConnect(size_t numOutputs, float minWeig
 }
 
 void NetworkGenotype::connectUnconnectedInputs(float minWeight, float maxWeight, float minBias, float maxBias, const std::vector<float> &functionChances, InnovationNumberType &innovationNumber, std::mt19937 &generator) {
-	// ---------------------------------- Add "Missing" Connections for Inputs and Outputs ----------------------------------
+	// ---------------------------------- Add "missing" connections for outputs ----------------------------------
+
+	updateNumHiddenNeurons();
 
 	const size_t numInputsHidden = _numInputs + _numHidden;
+	const size_t numNodes = _numInputs + _numOutputs + _numHidden;
 
 	std::uniform_real_distribution<float> distWeight(minWeight, maxWeight);
 
-	// Inputs
-	for (size_t i = 0; i < _numInputs; i++)
-	// Input isn't connected to anything, add some connections
-	if (_connectionSet._nodes[i]._connections.size() < _numOutputs)
-	for (size_t j = 0; j < _numOutputs; j++) {
-		std::shared_ptr<ConnectionGene> connection(new ConnectionGene());
+	// Outputs
+	for (size_t i = 0; i < _numInputs; i++) {
+		for (size_t j = numInputsHidden; j < numNodes; j++) {
+			bool isConnectedToInput = false;
 
-		connection->_enabled = true;
-		connection->_inIndex = i;
-		connection->_outIndex = numInputsHidden + j;
+			for (std::list<std::shared_ptr<ConnectionGene>>::iterator it = _connectionSet._nodes[j]._connections.begin(); it != _connectionSet._nodes[j]._connections.end(); it++)
+			if ((*it)->_inIndex == i) {
+				isConnectedToInput = true;
 
-		connection->_weight = distWeight(generator);
+				break;
+			}
 
-		connection->_innovationNumber = innovationNumber;
+			if (!isConnectedToInput) {
+				std::shared_ptr<ConnectionGene> connection(new ConnectionGene());
 
-		innovationNumber++;
+				connection->_enabled = true;
+				connection->_inIndex = i;
+				connection->_outIndex = j;
 
-		_connectionSet.addConnection(minBias, maxBias, functionChances, connection, innovationNumber, generator);
+				connection->_weight = distWeight(generator);
+
+				connection->_innovationNumber = innovationNumber;
+
+				innovationNumber++;
+
+				_connectionSet.addConnection(minBias, maxBias, functionChances, connection, innovationNumber, generator);
+			}
+		}
 	}
 }
 
 
 void NetworkGenotype::connectUnconnectedOutputs(float minWeight, float maxWeight, float minBias, float maxBias, const std::vector<float> &functionChances, InnovationNumberType &innovationNumber, std::mt19937 &generator) {
-	// ---------------------------------- Add "Missing" Connections for Inputs and Outputs ----------------------------------
+	// ---------------------------------- Add "missing" connections for outputs ----------------------------------
 
 	updateNumHiddenNeurons();
 
@@ -1463,22 +1476,31 @@ void NetworkGenotype::connectUnconnectedOutputs(float minWeight, float maxWeight
 
 		assert(outputIndex > 0 && outputIndex < _connectionSet._nodes.size());
 
-		// Output isn't connected to anything, add some connections
-		if (_connectionSet._nodes[outputIndex]._connections.size() < _numInputs)
 		for (size_t j = 0; j < _numInputs; j++) {
-			std::shared_ptr<ConnectionGene> connection(new ConnectionGene());
+			bool isConnectedToInput = false;
 
-			connection->_enabled = true;
-			connection->_inIndex = j;
-			connection->_outIndex = outputIndex;
+			for (std::list<std::shared_ptr<ConnectionGene>>::iterator it = _connectionSet._nodes[outputIndex]._connections.begin(); it != _connectionSet._nodes[outputIndex]._connections.end(); it++)
+			if ((*it)->_inIndex == j) {
+				isConnectedToInput = true;
 
-			connection->_weight = distWeight(generator);
+				break;
+			}
 
-			connection->_innovationNumber = innovationNumber;
+			if (!isConnectedToInput) {
+				std::shared_ptr<ConnectionGene> connection(new ConnectionGene());
 
-			innovationNumber++;
+				connection->_enabled = true;
+				connection->_inIndex = j;
+				connection->_outIndex = outputIndex;
 
-			_connectionSet.addConnection(minBias, maxBias, functionChances, connection, innovationNumber, generator);
+				connection->_weight = distWeight(generator);
+
+				connection->_innovationNumber = innovationNumber;
+
+				innovationNumber++;
+
+				_connectionSet.addConnection(minBias, maxBias, functionChances, connection, innovationNumber, generator);
+			}
 		}
 	}
 }

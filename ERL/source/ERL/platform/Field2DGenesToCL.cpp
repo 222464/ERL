@@ -93,11 +93,11 @@ std::string erl::field2DGenesNodeUpdateToCL(erl::Field2DGenes &genes, const erl:
 		"	int nodeIndex = get_global_id(0);\n"
 		"	int nodeStartOffset = nodeIndex * nodeAndConnectionsSize;\n"
 		"	int connectionsStartOffset = nodeStartOffset + nodeSize;\n"
-		"	int2 nodePosition = (int2)(nodeIndex % fieldWidth, nodeIndex / fieldHeight);\n"
+		"	int2 nodePosition = (int2)(nodeIndex % fieldWidth, nodeIndex / fieldWidth);\n"
 		"	float2 normalizedCoords = ((float2)(nodePosition.x, nodePosition.y)) * ((float2)(fieldWidthInv, fieldHeightInv));\n"
 		"	float nodeType = source[nodeStartOffset + " + std::to_string(genes.getNodeOutputSize()) + "];\n"
 		"\n"
-		"	int2 nodeInputOutputIndicesPlusOne = read_imagei(typeImage, unnormalizedClampedNearestSampler, nodePosition).xy;\n"
+		"	uint2 nodeInputOutputIndicesPlusOne = read_imageui(typeImage, unnormalizedClampedNearestSampler, nodePosition).xy;\n"
 		"\n"
 		"	// Update connections\n";
 
@@ -106,12 +106,15 @@ std::string erl::field2DGenesNodeUpdateToCL(erl::Field2DGenes &genes, const erl:
 		code += "	float responseSum" + std::to_string(i) + ";\n";
 	}
 
+	code +=
+		"\n";
+
 	// Initialize response accumulators
 	code +=
 		"	if (nodeInputOutputIndicesPlusOne.x == 0) {\n";
 
 	for (int i = 0; i < genes.getConnectionResponseSize(); i++) {
-		code += "		responseSum" + std::to_string(i) + " = 0;\n";
+		code += "		responseSum" + std::to_string(i) + " = 0.0f;\n";
 	}
 
 	code +=
@@ -119,7 +122,7 @@ std::string erl::field2DGenesNodeUpdateToCL(erl::Field2DGenes &genes, const erl:
 		"	else {\n";
 
 	for (int i = 0; i < genes.getConnectionResponseSize(); i++) {
-		code += "		responseSum" + std::to_string(i) + " = read_imagef(inputImage, unnormalizedClampedNearestSampler, (nodeInputOutputIndicesPlusOne.x - 1) * " + std::to_string(genes.getConnectionResponseSize()) + " + " + std::to_string(i) + ").x;\n";
+		code += "		responseSum" + std::to_string(i) + " = read_imagef(inputImage, unnormalizedClampedNearestSampler, ((int)(nodeInputOutputIndicesPlusOne.x) - 1) * " + std::to_string(genes.getConnectionResponseSize()) + " + " + std::to_string(i) + ").x;\n";
 	}
 
 	code +=
@@ -130,7 +133,7 @@ std::string erl::field2DGenesNodeUpdateToCL(erl::Field2DGenes &genes, const erl:
 		"\n"
 		"		// Wrap the coordinates around\n"
 		"		connectionNodePosition.x = connectionNodePosition.x % fieldWidth;\n"
-		"		connectionNodePosition.y = connectionNodePosition.x % fieldHeight;\n"
+		"		connectionNodePosition.y = connectionNodePosition.y % fieldHeight;\n"
 		"		connectionNodePosition.x = connectionNodePosition.x < 0 ? connectionNodePosition.x + fieldWidth : connectionNodePosition.x;\n"
 		"		connectionNodePosition.y = connectionNodePosition.y < 0 ? connectionNodePosition.y + fieldHeight : connectionNodePosition.y;\n"
 		"\n"
@@ -159,7 +162,7 @@ std::string erl::field2DGenesNodeUpdateToCL(erl::Field2DGenes &genes, const erl:
 
 	// Type, random, and reward inputs
 	code +=
-		"nodeType, read_imagef(randomImage, normalizedRepeatNearestSampler, (connectionNodePosition + nodePosition) * randomImageSizeInv).x, reward, ";
+		"nodeType, read_imagef(randomImage, normalizedRepeatNearestSampler, (float2)(connectionNodePosition.x + nodePosition.x, connectionNodePosition.y + nodePosition.y) * randomImageSizeInv).x, reward, ";
 
 	// Add outputs
 	for (int i = 0; i < genes.getConnectionResponseSize(); i++) {
@@ -204,7 +207,7 @@ std::string erl::field2DGenesNodeUpdateToCL(erl::Field2DGenes &genes, const erl:
 
 	// Assign changeable recurrent values
 	for (int i = 0; i < nodeRuleData._numRecurrentSourceNodes; i++) {
-		code += "	float nodeRec" + std::to_string(i) + " =  source[nodeStartOffset + " + std::to_string(genes.getNodeOutputSize() + 3 + i) + "];\n";
+		code += "	float nodeRec" + std::to_string(i) + " =  source[nodeStartOffset + " + std::to_string(genes.getNodeOutputSize() + 1 + i) + "];\n";
 	}
 
 	code += "\n"
@@ -217,7 +220,7 @@ std::string erl::field2DGenesNodeUpdateToCL(erl::Field2DGenes &genes, const erl:
 
 	// Type, random, and reward inputs
 	code +=
-		"nodeType, read_imagef(randomImage, normalizedRepeatNearestSampler, (nodePosition + (int2)(-1, -1)) * randomImageSizeInv).x, reward, ";
+		"nodeType, read_imagef(randomImage, normalizedRepeatNearestSampler, (float2)(nodePosition.x - 1, nodePosition.y - 1) * randomImageSizeInv).x, reward, ";
 
 	// Add outputs
 	for (int i = 0; i < genes.getNodeOutputSize(); i++) {
@@ -255,7 +258,7 @@ std::string erl::field2DGenesNodeUpdateToCL(erl::Field2DGenes &genes, const erl:
 		"	if (nodeInputOutputIndicesPlusOne.y != 0) {\n";
 
 	for (int i = 0; i < genes.getNodeOutputSize(); i++) {
-		code += "		write_imagef(outputImage, (nodeInputOutputIndicesPlusOne.y - 1) * " + std::to_string(genes.getNodeOutputSize()) + " + " + std::to_string(i) + ", output" + std::to_string(i) + ");\n";
+		code += "		write_imagef(outputImage, ((int)(nodeInputOutputIndicesPlusOne.y) - 1) * " + std::to_string(genes.getNodeOutputSize()) + " + " + std::to_string(i) + ", output" + std::to_string(i) + ");\n";
 	}
 
 	code +=
