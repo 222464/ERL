@@ -92,7 +92,7 @@ void Field2D::create(Field2DGenes &genes, ComputeSystem &cs, int width, int heig
 
 	for (int ni = 0; ni < _numNodes; ni++) {
 		int x = ni % _width;
-		int y = ni / _height;
+		int y = ni / _width;
 
 		float xCoord = static_cast<float>(x) / widthf;
 		float yCoord = static_cast<float>(y) / heightf;
@@ -188,7 +188,7 @@ void Field2D::create(Field2DGenes &genes, ComputeSystem &cs, int width, int heig
 	_program = cl::Program(cs.getContext(), field2DGenesNodeUpdateToCL(genes, *this, _connectionPhenotype, _nodePhenotype, _connectionData, _nodeData, activationFunctionNames, _width, _height, _connectionRadius, numInputs, numOutputs));
 
 	if (_program.build(std::vector<cl::Device>(1, cs.getDevice())) != CL_SUCCESS) {
-		logger << " Error building: " << _program.getBuildInfo<CL_PROGRAM_BUILD_LOG>(cs.getDevice()) << erl::endl;
+		logger << "Error building: " << _program.getBuildInfo<CL_PROGRAM_BUILD_LOG>(cs.getDevice()) << erl::endl;
 		abort();
 	}
 

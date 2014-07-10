@@ -59,21 +59,18 @@ Neuron &NetworkPhenotype::getNeuronNode(size_t index) {
 }
 
 void NetworkPhenotype::create(const NetworkGenotype &genotype) {
-	size_t numInputs = genotype.getNumInputs();
-	size_t numHidden = genotype.getNumHidden();
-	size_t numOutputs = genotype.getNumOutputs();
-
 	// Clear existing data, if there is any
 	_inputs.clear();
 	_hidden.clear();
 	_outputs.clear();
 
 	// Create neurons and neuron inputs
-	_inputs.resize(numInputs);
-	_hidden.resize(numHidden);
-	_outputs.resize(numOutputs);
+	_inputs.resize(genotype.getNumInputs());
+	_hidden.resize(genotype.getNumHidden());
+	_outputs.resize(genotype.getNumOutputs());
 
-	const size_t numUnits = numInputs + numHidden + numOutputs;
+	const size_t numUnits = genotype.getNumInputs() + genotype.getNumHidden() + genotype.getNumOutputs();
+	const size_t numInputsAndHidden = genotype.getNumInputs() + genotype.getNumHidden();
 
 	// Connect neurons
 	for (size_t i = 0; i < genotype.getConnectionSet().size(); i++) {
@@ -102,6 +99,89 @@ void NetworkPhenotype::create(const NetworkGenotype &genotype) {
 		node._bias = data._bias;
 		node._activationFunctionIndex = data._activationFunctionIndex;
 	}
+
+	// ------------------------------- Pruning -------------------------------
+
+	// Flood fill to detect which connections and nodes contribute to output
+	std::list<size_t> openList;
+
+	for (size_t i = numInputsAndHidden; i < numUnits; i++)
+		openList.push_back(i);
+
+	std::vector<bool> marked(numUnits, false);
+
+	for (size_t i = 0; i < getNumInputs(); i++)
+		marked[i] = true;
+
+	for (size_t i = 0; i < getNumOutputs(); i++)
+		marked[numInputsAndHidden + i] = true;
+
+	while (!openList.empty()) {
+		size_t current = openList.front();
+
+		openList.pop_front();
+
+		// Add previous nodes connected to this one
+		Neuron &node = getNeuronNode(current);
+
+		for (size_t i = 0; i < node._inputs.size(); i++)
+		if (!marked[node._inputs[i]._inputOffset]) {
+			openList.push_back(node._inputs[i]._inputOffset);
+
+			marked[node._inputs[i]._inputOffset] = true;
+		}
+	}
+
+	// If nodes are not marked, remove connections to them
+	for (size_t i = getNumInputs(); i < numUnits; i++) {
+		Neuron &node = getNeuronNode(i);
+
+		for (size_t j = 0; j < node._inputs.size();)
+		if (!marked[node._inputs[j]._inputOffset])
+			node._inputs.erase(node._inputs.begin() + j);
+		else
+			j++;
+	}
+
+	// Remove unmarked nodes
+	std::vector<size_t> newIndices(numUnits);
+
+	for (size_t i = 0; i < numUnits; i++)
+		newIndices[i] = i;
+
+	size_t assignOffset = 0;
+
+	for (size_t i = getNumInputs(); i < numInputsAndHidden; i++) {
+		size_t hiddenIndex = i - getNumInputs();
+		
+		while (i + assignOffset < numInputsAndHidden && !marked[i + assignOffset]) {
+			assignOffset++;
+
+			if (i + assignOffset < numInputsAndHidden)
+				newIndices[i + assignOffset] = i;
+		}
+
+		if (i + assignOffset >= numInputsAndHidden)
+			break;
+
+		_hidden[hiddenIndex] = _hidden[hiddenIndex + assignOffset];
+		marked[i] = marked[i + assignOffset];
+	}
+
+
+	// Shift output indices down
+	for (size_t i = numInputsAndHidden; i < numUnits; i++)
+		newIndices[i] -= assignOffset;
+
+	for (size_t i = getNumInputs(); i < numUnits; i++) {
+		Neuron &node = getNeuronNode(i);
+
+		for (size_t j = 0; j < node._inputs.size(); j++) {
+			node._inputs[j]._inputOffset = newIndices[node._inputs[j]._inputOffset];
+		}
+	}
+
+	_hidden.resize(_hidden.size() - assignOffset);
 }
 
 void NetworkPhenotype::update(const std::vector<std::function<float(float)>> &activationFunctions) {

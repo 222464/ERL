@@ -41,15 +41,15 @@ void Field2DGenes::crossover(const neat::EvolverSettings* pSettings, const std::
 	_encoderGenotype.crossover(pSettings, functionChances, &pF2DOtherParent->_encoderGenotype, &pF2DChild->_encoderGenotype, fitnessForThis, fitnessForOtherParent, innovationNumber, generator);
 	_decoderGenotype.crossover(pSettings, functionChances, &pF2DOtherParent->_decoderGenotype, &pF2DChild->_decoderGenotype, fitnessForThis, fitnessForOtherParent, innovationNumber, generator);
 
-	pF2DChild->_connectionUpdateGenotype.setNumInputs(_nodeOutputSize + 3); // + 3 for type, random, and reward inputs
-	pF2DChild->_connectionUpdateGenotype.setNumOutputs(_connectionResponseSize, pSettings->_minBias, pSettings->_maxBias, functionChances, generator);
+	pF2DChild->_connectionUpdateGenotype.setNumInputs(_nodeOutputSize + 3, pSettings->_minBias, pSettings->_maxBias, functionChances, innovationNumber, generator); // + 3 for type, random, and reward inputs
+	pF2DChild->_connectionUpdateGenotype.setNumOutputs(_connectionResponseSize, pSettings->_minBias, pSettings->_maxBias, functionChances, innovationNumber, generator);
 
-	pF2DChild->_activationUpdateGenotype.setNumInputs(_connectionResponseSize + 3); // + 3 for type, random, and reward inputs
-	pF2DChild->_activationUpdateGenotype.setNumOutputs(_nodeOutputSize, pSettings->_minBias, pSettings->_maxBias, functionChances, generator);
+	pF2DChild->_activationUpdateGenotype.setNumInputs(_connectionResponseSize + 3, pSettings->_minBias, pSettings->_maxBias, functionChances, innovationNumber, generator); // + 3 for type, random, and reward inputs
+	pF2DChild->_activationUpdateGenotype.setNumOutputs(_nodeOutputSize, pSettings->_minBias, pSettings->_maxBias, functionChances, innovationNumber, generator);
 
-	pF2DChild->_encoderGenotype.setNumOutputs(_connectionResponseSize, pSettings->_minBias, pSettings->_maxBias, functionChances, generator);
+	pF2DChild->_encoderGenotype.setNumOutputs(_connectionResponseSize, pSettings->_minBias, pSettings->_maxBias, functionChances, innovationNumber, generator);
 
-	pF2DChild->_decoderGenotype.setNumInputs(_nodeOutputSize);
+	pF2DChild->_decoderGenotype.setNumInputs(_nodeOutputSize, pSettings->_minBias, pSettings->_maxBias, functionChances, innovationNumber, generator);
 
 	// ------------------------ Initializations ------------------------
 
@@ -105,15 +105,15 @@ void Field2DGenes::mutate(const neat::EvolverSettings* pSettings, const std::vec
 	if (dist01(generator) < pF2DSettings->_addNodeOutputChance)
 		_nodeOutputSize++;
 
-	_connectionUpdateGenotype.setNumInputs(_nodeOutputSize + 3);
-	_connectionUpdateGenotype.setNumOutputs(_connectionResponseSize, pSettings->_minBias, pSettings->_maxBias, functionChances, generator);
+	_connectionUpdateGenotype.setNumInputs(_nodeOutputSize + 3, pSettings->_minBias, pSettings->_maxBias, functionChances, innovationNumber, generator);
+	_connectionUpdateGenotype.setNumOutputs(_connectionResponseSize, pSettings->_minBias, pSettings->_maxBias, functionChances, innovationNumber, generator);
 
-	_activationUpdateGenotype.setNumInputs(_connectionResponseSize + 3);
-	_activationUpdateGenotype.setNumOutputs(_nodeOutputSize, pSettings->_minBias, pSettings->_maxBias, functionChances, generator);
+	_activationUpdateGenotype.setNumInputs(_connectionResponseSize + 3, pSettings->_minBias, pSettings->_maxBias, functionChances, innovationNumber, generator);
+	_activationUpdateGenotype.setNumOutputs(_nodeOutputSize, pSettings->_minBias, pSettings->_maxBias, functionChances, innovationNumber, generator);
 
-	_encoderGenotype.setNumOutputs(_connectionResponseSize, pSettings->_minBias, pSettings->_maxBias, functionChances, generator);
+	_encoderGenotype.setNumOutputs(_connectionResponseSize, pSettings->_minBias, pSettings->_maxBias, functionChances, innovationNumber, generator);
 
-	_decoderGenotype.setNumInputs(_nodeOutputSize);
+	_decoderGenotype.setNumInputs(_nodeOutputSize, pSettings->_minBias, pSettings->_maxBias, functionChances, innovationNumber, generator);
 
 	// ------------------------ Initializations ------------------------
 

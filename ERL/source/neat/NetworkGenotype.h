@@ -73,11 +73,11 @@ namespace neat {
 			ConnectionSet &operator=(const ConnectionSet &other);
 
 			void addConnection(float minBias, float maxBias, const std::vector<float> &functionChances, const std::shared_ptr<ConnectionGene> &connection, InnovationNumberType &innovationNumber, std::mt19937 &generator);
-			void addConnectionKnown(float bias1, float bias2, int function1, int function2, float minBias, float maxBias, const std::vector<float> &functionChances, const std::shared_ptr<ConnectionGene> &connection, InnovationNumberType innovationNumber1, InnovationNumberType innovationNumber2, std::mt19937 &generator);
+			void addConnectionKnown(float bias1, float bias2, int function1, int function2, float minBias, float maxBias, const std::vector<float> &functionChances, const std::shared_ptr<ConnectionGene> &connection, InnovationNumberType innovationNumber1, InnovationNumberType innovationNumber2, InnovationNumberType &innovationNumber, std::mt19937 &generator);
 			void removeConnections();
 
-			void addNodes(int numNodes, float minBias, float maxBias, const std::vector<float> &functionChances, std::mt19937 &generator);
-			void setNumNodes(size_t numNodes, float minBias, float maxBias, const std::vector<float> &functionChances, std::mt19937 &generator);
+			void addNodes(int numNodes, float minBias, float maxBias, const std::vector<float> &functionChances, InnovationNumberType &innovationNumber, std::mt19937 &generator);
+			void setNumNodes(size_t numNodes, float minBias, float maxBias, const std::vector<float> &functionChances, InnovationNumberType &innovationNumber, std::mt19937 &generator);
 
 			size_t getNumNodes() const {
 				return _nodes.size();
@@ -88,6 +88,8 @@ namespace neat {
 			}
 
 			bool canSeverWithoutOrhpan(const ConnectionGene &connection) const;
+
+			void reAddNodeConnections();
 
 		} _connectionSet;
 
@@ -103,7 +105,7 @@ namespace neat {
 		// For initializing starting genes
 		void initialize(size_t numInputs, size_t numOutputs, float minWeight, float maxWeight, float minBias, float maxBias, const std::vector<float> &functionChances, InnovationNumberType &innovationNumber, std::mt19937 &generator); // Automatically increments innovation number
 
-		void updateNumHiddenNeurons();
+		void updateNumHiddenNeurons(float minBias, float maxBias, const std::vector<float> &functionChances, InnovationNumberType &innovationNumber, std::mt19937 &generator);
 
 		void mutatePerturbWeight(float perturbationChance, float maxPerturbation, std::mt19937 &generator);
 		void mutatePerturbWeightClamped(float perturbationChance, float maxPerturbation, float minWeight, float maxWeight, float minBias, float maxBias, std::mt19937 &generator);
@@ -111,7 +113,7 @@ namespace neat {
 		bool mutateAddConnection(float minWeight, float maxWeight, float minBias, float maxBias, const std::vector<float> &functionChances, InnovationNumberType &innovationNumber, std::mt19937 &generator); // Automatically increments innovation number. Returns false if cannot add connection
 		void mutateAddNode(float minWeight, float maxWeight, float minBias, float maxBias, const std::vector<float> &functionChances, InnovationNumberType &innovationNumber, std::mt19937 &generator); // Automatically increments innovation number
 
-		void crossover(const NetworkGenotype &otherParent, NetworkGenotype &child, float disableGeneChance, float fitnessForThis, float fitnessForOtherParent, float minBias, float maxBias, const std::vector<float> &functionChances, std::mt19937 &generator); // Keeps parents, creates new child
+		void crossover(const NetworkGenotype &otherParent, NetworkGenotype &child, float disableGeneChance, float fitnessForThis, float fitnessForOtherParent, float minBias, float maxBias, const std::vector<float> &functionChances, InnovationNumberType &innovationNumber, std::mt19937 &generator); // Keeps parents, creates new child
 
 		float getSimilarity(const NetworkGenotype &other, float excessFactor, float disjointFactor, float averageWeightDifferenceFactor, float inputCountDifferenceFactor, float outputCountDifferenceFactor, float activationFunctionFactor);
 
@@ -121,8 +123,8 @@ namespace neat {
 		void mutate(const class EvolverSettings* pSettings, const std::vector<float> &functionChances, InnovationNumberType &innovationNumber, std::mt19937 &generator);
 		float getSimilarity(const class EvolverSettings* pSettings, const std::vector<float> &functionChances, const Evolvable* pOther);
 
-		void setNumInputs(size_t numInputs);
-		void setNumOutputs(size_t numOutputs, float minBias, float maxBias, const std::vector<float> &functionChances, std::mt19937 &generator);
+		void setNumInputs(size_t numInputs, float minBias, float maxBias, const std::vector<float> &functionChances, InnovationNumberType &innovationNumber, std::mt19937 &generator);
+		void setNumOutputs(size_t numOutputs, float minBias, float maxBias, const std::vector<float> &functionChances, InnovationNumberType &innovationNumber, std::mt19937 &generator);
 		void setNumInputsFullyConnect(size_t numInputs, float minWeight, float maxWeight, float minBias, float maxBias, const std::vector<float> &functionChances, InnovationNumberType &innovationNumber, std::mt19937 &generator);
 		void setNumOutputsFullyConnect(size_t numOutputs, float minWeight, float maxWeight, float minBias, float maxBias, const std::vector<float> &functionChances, InnovationNumberType &innovationNumber, std::mt19937 &generator);
 

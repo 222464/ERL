@@ -31,26 +31,26 @@
 using namespace neat;
 
 EvolverSettings::EvolverSettings()
-: _speciationTolerance(2.2f),
-_preferSimilarFactor(0.05f),
+: _speciationTolerance(20.0f),
+_preferSimilarFactor(0.2f),
 _reproduceRatio(0.9f),
-_newConnectionMutationRate(0.2f),
-_newNodeMutationRate(0.1f),
+_newConnectionMutationRate(0.08f),
+_newNodeMutationRate(0.08f),
 _weightPerturbationChance(0.3f),
-_disableGeneChance(0.125f),
+_disableGeneChance(0.08f),
 _minWeight(-2.0f),
 _maxWeight(2.0f),
 _minBias(-2.0f),
 _maxBias(2.0f),
-_maxPerturbation(0.4f),
+_maxPerturbation(0.15f),
 _changeFunctionChance(0.05f),
 _excessFactor(1.0f),
 _disjointFactor(1.0f),
 _averageWeightDifferenceFactor(0.4f),
 _inputCountDifferenceFactor(1.5f),
 _outputCountDifferenceFactor(1.5f),
-_functionFactor(3.0f),
-_populationSize(16),
+_functionFactor(2.0f),
+_populationSize(20),
 _numElites(3)
 {}
 

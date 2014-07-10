@@ -74,7 +74,7 @@ float ExperimentAND::evaluate(erl::Field2DGenes &fieldGenes, const neat::Evolver
 
 			field.update((reward - prevReward) * 50.0f, cs, activationFunctions, 14, generator);
 
-			newReward -= std::abs(outputs[j] - field.getOutput(0)) * 0.25f;
+			newReward -= std::pow(std::abs(outputs[j] - field.getOutput(0)), 0.25f) * 0.25f;
 
 			values[j] = field.getOutput(0);
 			average += values[j];
