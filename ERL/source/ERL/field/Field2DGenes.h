@@ -22,6 +22,8 @@ namespace erl {
 		int _nodeOutputSize;
 		int _numGases;
 
+		float _inputStrengthScalar;
+
 		std::vector<std::tuple<float, float>> _recurrentNodeInitBounds;
 		std::vector<std::tuple<float, float>> _recurrentConnectionInitBounds;
 

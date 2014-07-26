@@ -164,7 +164,7 @@ int main() {
 
 	float sizeScalar = 800.0f / 400.0f;
 
-	field.create(genes, cs, 400, 400, 4, 2, 1, randomImage, blurProgram, blurKernelX, blurKernelY, functions, functionNames, -1.0f, 1.0f, generator, logger);
+	field.create(genes, cs, 400, 400, 4, 2, 1, 3, 3, randomImage, blurProgram, blurKernelX, blurKernelY, functions, functionNames, -1.0f, 1.0f, generator, logger);
 
 	field.setInput(0, 10.0f);
 	field.setInput(1, 10.0f);

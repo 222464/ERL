@@ -21,6 +21,12 @@ namespace erl {
 		float _averageInitChance;
 		float _maxInitPerturbation;
 
+		float _minInitInputStrengthScalar;
+		float _maxInitInputStrengthScalar;
+		float _averageInputStrengthScalarChance;
+		float _mutateInputStrengthChance;
+		float _maxInputStrengthPerturbation;
+
 		Field2DEvolverSettings();
 	};
 }

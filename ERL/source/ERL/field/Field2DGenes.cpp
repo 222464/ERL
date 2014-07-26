@@ -15,6 +15,10 @@ void Field2DGenes::initialize(size_t numInputs, size_t numOutputs, const neat::E
 	_nodeOutputSize = 1;
 	_numGases = 1;
 
+	std::uniform_real_distribution<float> inputStrengthScalarDist(pF2DSettings->_minInitInputStrengthScalar, pF2DSettings->_maxInitInputStrengthScalar);
+
+	_inputStrengthScalar = inputStrengthScalarDist(generator);
+
 	// + 3 is for type, random, and reward inputs. + 6 is 1 additional type as well as delta position for connections
 	_connectionUpdateGenotype.initialize(_nodeOutputSize + 6, _connectionResponseSize, pSettings, functionChances, innovationNumber, generator);
 	_activationUpdateGenotype.initialize(_connectionResponseSize + 3 + _numGases, _nodeOutputSize + _numGases, pSettings, functionChances, innovationNumber, generator);
@@ -36,6 +40,8 @@ void Field2DGenes::crossover(const neat::EvolverSettings* pSettings, const std::
 	pF2DChild->_connectionResponseSize = dist01(generator) < 0.5f ? _connectionResponseSize : pF2DOtherParent->_connectionResponseSize;
 	pF2DChild->_nodeOutputSize = dist01(generator) < 0.5f ? _nodeOutputSize : pF2DOtherParent->_nodeOutputSize;
 	pF2DChild->_numGases = dist01(generator) < 0.5f ? _numGases : pF2DOtherParent->_numGases;
+
+	pF2DChild->_inputStrengthScalar = dist01(generator) < pF2DSettings->_averageInputStrengthScalarChance ? (_inputStrengthScalar + pF2DOtherParent->_inputStrengthScalar) * 0.5f : (dist01(generator) < 0.5f ? _inputStrengthScalar : pF2DOtherParent->_inputStrengthScalar);
 
 	_connectionUpdateGenotype.crossover(pSettings, functionChances, &pF2DOtherParent->_connectionUpdateGenotype, &pF2DChild->_connectionUpdateGenotype, fitnessForThis, fitnessForOtherParent, innovationNumber, generator);
 	_activationUpdateGenotype.crossover(pSettings, functionChances, &pF2DOtherParent->_activationUpdateGenotype, &pF2DChild->_activationUpdateGenotype, fitnessForThis, fitnessForOtherParent, innovationNumber, generator);
@@ -109,6 +115,12 @@ void Field2DGenes::mutate(const neat::EvolverSettings* pSettings, const std::vec
 
 	if (dist01(generator) < pF2DSettings->_addGasChance)
 		_numGases++;
+
+	if (dist01(generator) < pF2DSettings->_mutateInputStrengthChance) {
+		std::uniform_real_distribution<float> inputStrengthPertDist(-pF2DSettings->_maxInputStrengthPerturbation, pF2DSettings->_maxInputStrengthPerturbation);
+
+		_inputStrengthScalar += inputStrengthPertDist(generator);
+	}
 
 	_connectionUpdateGenotype.setNumInputs(_nodeOutputSize + 6, pSettings->_minBias, pSettings->_maxBias, functionChances, innovationNumber, generator);
 	_connectionUpdateGenotype.setNumOutputs(_connectionResponseSize, pSettings->_minBias, pSettings->_maxBias, functionChances, innovationNumber, generator);

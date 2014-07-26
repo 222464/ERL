@@ -5,10 +5,12 @@
 using namespace erl;
 
 Field2D::Field2D()
-: _numGasBlurPasses(4)
+: _numGasBlurPasses(4),
+_inputStrengthScalar(10.0f)
 {}
 
 void Field2D::create(Field2DGenes &genes, ComputeSystem &cs, int width, int height, int connectionRadius, int numInputs, int numOutputs,
+	int inputRange, int outputRange,
 	const std::shared_ptr<cl::Image2D> &randomImage,
 	const std::shared_ptr<cl::Program> &gasBlurProgram,
 	const std::shared_ptr<cl::Kernel> &gasBlurKernelX,
@@ -42,6 +44,8 @@ void Field2D::create(Field2DGenes &genes, ComputeSystem &cs, int width, int heig
 
 	_outputs.clear();
 	_outputs.assign(numOutputs, 0.0f);
+
+	_numOutputsPerBlob = (outputRange + 1) * (outputRange + 1);
 
 	// Create phenotypes for rules
 	_connectionPhenotype.create(genes.getConnectionUpdateGenotype());
@@ -171,25 +175,39 @@ void Field2D::create(Field2DGenes &genes, ComputeSystem &cs, int width, int heig
 		ioset._inputIndexPlusOne = inputIndex++ + 1;
 		ioset._outputIndexPlusOne = 0;
 
-		typeSoftwareImage.setPixel(xii, yi, ioset);
+		// Box
+		for (int dx = -inputRange; dx <= inputRange; dx++)
+		for (int dy = -inputRange; dy <= inputRange; dy++) {
+			int nx = (xii + dx) % _width;
+			int ny = (yi + dy) % _height;
+			nx = nx < 0 ? nx + _width : nx;
+			ny = ny < 0 ? ny + _height : ny;
+
+			typeSoftwareImage.setPixel(nx, ny, ioset);
+		}
 	}
 
 	for (int i = 0; i < getNumOutputs(); i++) {
 		float y = outputStartY + i * outputSpacing;
 		int yi = static_cast<int>(y + 0.5f);
 
-		IOSet ioset;
-		ioset._inputIndexPlusOne = 0;
-		ioset._outputIndexPlusOne = outputIndex++ + 1;
+		// Box
+		for (int dx = -inputRange; dx <= inputRange; dx++)
+		for (int dy = -inputRange; dy <= inputRange; dy++) {
+			int nx = (xoi + dx) % _width;
+			int ny = (yi + dy) % _height;
+			nx = nx < 0 ? nx + _width : nx;
+			ny = ny < 0 ? ny + _height : ny;
 
-		typeSoftwareImage.setPixel(xoi, yi, ioset);
+			IOSet ioset;
+			ioset._inputIndexPlusOne = 0;
+			ioset._outputIndexPlusOne = outputIndex++ + 1;
+
+			typeSoftwareImage.setPixel(nx, ny, ioset);
+		}
 	}
 
 	_typeImage = cl::Image2D(cs.getContext(), CL_MEM_READ_ONLY | CL_MEM_COPY_HOST_PTR, cl::ImageFormat(CL_RG, CL_UNSIGNED_INT8), _width, _height, 0, typeSoftwareImage.getData());
-
-	std::vector<float> outputBuffer(getNumOutputs() * _nodeOutputSize, 0.0f);
-
-	_outputImage = cl::Image1D(cs.getContext(), CL_MEM_WRITE_ONLY | CL_MEM_COPY_HOST_PTR, cl::ImageFormat(CL_R, CL_FLOAT), getNumOutputs(), &outputBuffer[0]);
 
 	// Create OpenCL buffers
 	_buffers[0] = cl::Buffer(cs.getContext(), CL_MEM_READ_WRITE | CL_MEM_COPY_HOST_PTR, _bufferSize * sizeof(float), &buffer[0]);
@@ -200,6 +218,10 @@ void Field2D::create(Field2DGenes &genes, ComputeSystem &cs, int width, int heig
 	_gasBuffers[0] = cl::Buffer(cs.getContext(), CL_MEM_READ_WRITE | CL_MEM_COPY_HOST_PTR, gasInit.size() * sizeof(float), &gasInit[0]);
 	_gasBuffers[1] = cl::Buffer(cs.getContext(), CL_MEM_READ_WRITE | CL_MEM_COPY_HOST_PTR, gasInit.size() * sizeof(float), &gasInit[0]);
 	
+	std::vector<float> outputBuffer(getNumOutputs() * _nodeOutputSize * _numOutputsPerBlob, 0.0f);
+
+	_outputImage = cl::Image1D(cs.getContext(), CL_MEM_WRITE_ONLY | CL_MEM_COPY_HOST_PTR, cl::ImageFormat(CL_R, CL_FLOAT), getNumOutputs(), &outputBuffer[0]);
+
 	_program = cl::Program(cs.getContext(), field2DGenesNodeUpdateToCL(genes, *this, _connectionPhenotype, _nodePhenotype, _connectionData, _nodeData, activationFunctionNames, _width, _height, _connectionRadius, numInputs, numOutputs));
 
 	if (_program.build(std::vector<cl::Device>(1, cs.getDevice())) != CL_SUCCESS) {
@@ -236,7 +258,7 @@ void Field2D::update(float reward, ComputeSystem &cs, const std::vector<std::fun
 		_encoderPhenotypes[i].update(activationFunctions);
 
 		for (int j = 0; j < _connectionResponseSize; j++)
-			inputBuffer[inputBufferIndex++] = _encoderPhenotypes[i].getOutput(j)._output;
+			inputBuffer[inputBufferIndex++] = _encoderPhenotypes[i].getOutput(j)._output * _inputStrengthScalar;
 	}
 
 	_inputImage = cl::Image1D(cs.getContext(), CL_MEM_READ_ONLY | CL_MEM_COPY_HOST_PTR, cl::ImageFormat(CL_R, CL_FLOAT), getNumInputs(), &inputBuffer[0]);
@@ -281,7 +303,7 @@ void Field2D::update(float reward, ComputeSystem &cs, const std::vector<std::fun
 	region[1] = 1;
 	region[2] = 1;
 
-	std::vector<float> outputBuffer(getNumOutputs() * _nodeOutputSize);
+	std::vector<float> outputBuffer(getNumOutputs() * _nodeOutputSize * _numOutputsPerBlob);
 
 	cl::Event event;
 
@@ -292,9 +314,20 @@ void Field2D::update(float reward, ComputeSystem &cs, const std::vector<std::fun
 	// Decode
 	int outputBufferIndex = 0;
 
+	float numOutputsPerBlobInv = 1.0f / _numOutputsPerBlob;
+
 	for (int i = 0; i < getNumOutputs(); i++) {
+		std::vector<float> decoderInputs(_nodeOutputSize, 0.0f);
+
+		for (int j = 0; j < _numOutputsPerBlob; j++)
+		for (int k = 0; k < _nodeOutputSize; k++)
+			decoderInputs[k] += outputBuffer[outputBufferIndex++];
+
+		for (int k = 0; k < _nodeOutputSize; k++)
+			decoderInputs[k] *= numOutputsPerBlobInv;
+
 		for (int j = 0; j < _nodeOutputSize; j++)
-			_decoderPhenotypes[i].getInput(j)._output = outputBuffer[outputBufferIndex++];
+			_decoderPhenotypes[i].getInput(j)._output = decoderInputs[j];
 
 		_decoderPhenotypes[i].update(activationFunctions);
 

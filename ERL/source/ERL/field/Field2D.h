@@ -70,6 +70,10 @@ namespace erl {
 
 		int _bufferSize;
 
+		int _numOutputsPerBlob;
+
+		float _inputStrengthScalar;
+
 		std::vector<float> _inputs;
 		std::vector<float> _outputs;
 
@@ -82,6 +86,7 @@ namespace erl {
 		Field2D();
 
 		void create(Field2DGenes &genes, ComputeSystem &cs, int width, int height, int connectionRadius, int numInputs, int numOutputs,
+			int inputRange, int outputRange,
 			const std::shared_ptr<cl::Image2D> &randomImage,
 			const std::shared_ptr<cl::Program> &gasBlurProgram,
 			const std::shared_ptr<cl::Kernel> &gasBlurKernelX,
@@ -158,6 +163,14 @@ namespace erl {
 
 		int getNumOutputs() const {
 			return _outputs.size();
+		}
+
+		int getNumOutputsPerBlob() const {
+			return _numOutputsPerBlob;
+		}
+
+		float getInputStrengthScalar() const {
+			return _inputStrengthScalar;
 		}
 
 		void setInput(int index, float value) {
