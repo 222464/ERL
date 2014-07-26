@@ -20,6 +20,7 @@ namespace erl {
 
 		int _connectionResponseSize;
 		int _nodeOutputSize;
+		int _numGases;
 
 		std::vector<std::tuple<float, float>> _recurrentNodeInitBounds;
 		std::vector<std::tuple<float, float>> _recurrentConnectionInitBounds;
@@ -57,6 +58,10 @@ namespace erl {
 
 		int getNodeOutputSize() const {
 			return _nodeOutputSize;
+		}
+
+		int getNumGases() const {
+			return _numGases;
 		}
 
 		void readFromStream(std::istream &is);

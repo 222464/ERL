@@ -5,10 +5,14 @@
 using namespace erl;
 
 Field2D::Field2D()
+: _numGasBlurPasses(4)
 {}
 
 void Field2D::create(Field2DGenes &genes, ComputeSystem &cs, int width, int height, int connectionRadius, int numInputs, int numOutputs,
 	const std::shared_ptr<cl::Image2D> &randomImage,
+	const std::shared_ptr<cl::Program> &gasBlurProgram,
+	const std::shared_ptr<cl::Kernel> &gasBlurKernelX,
+	const std::shared_ptr<cl::Kernel> &gasBlurKernelY,
 	const std::vector<std::function<float(float)>> &activationFunctions, const std::vector<std::string> &activationFunctionNames,
 	float minRecInit, float maxRecInit, std::mt19937 &generator,
 	Logger &logger)
@@ -18,7 +22,13 @@ void Field2D::create(Field2DGenes &genes, ComputeSystem &cs, int width, int heig
 	_currentReadBufferIndex = 0;
 	_currentWriteBufferIndex = 1;
 
+	_numGases = genes._numGases;
+
 	_randomImage = randomImage;
+
+	_gasBlurProgram = gasBlurProgram;
+	_gasBlurKernelX = gasBlurKernelX;
+	_gasBlurKernelY = gasBlurKernelY;
 
 	_connectionResponseSize = genes.getConnectionResponseSize();
 	_nodeOutputSize = genes.getNodeOutputSize();
@@ -185,6 +195,11 @@ void Field2D::create(Field2DGenes &genes, ComputeSystem &cs, int width, int heig
 	_buffers[0] = cl::Buffer(cs.getContext(), CL_MEM_READ_WRITE | CL_MEM_COPY_HOST_PTR, _bufferSize * sizeof(float), &buffer[0]);
 	_buffers[1] = cl::Buffer(cs.getContext(), CL_MEM_READ_WRITE | CL_MEM_COPY_HOST_PTR, _bufferSize * sizeof(float), &buffer[0]);
 
+	std::vector<float> gasInit(_numNodes * _numGases, 0.0f);
+
+	_gasBuffers[0] = cl::Buffer(cs.getContext(), CL_MEM_READ_WRITE | CL_MEM_COPY_HOST_PTR, gasInit.size() * sizeof(float), &gasInit[0]);
+	_gasBuffers[1] = cl::Buffer(cs.getContext(), CL_MEM_READ_WRITE | CL_MEM_COPY_HOST_PTR, gasInit.size() * sizeof(float), &gasInit[0]);
+	
 	_program = cl::Program(cs.getContext(), field2DGenesNodeUpdateToCL(genes, *this, _connectionPhenotype, _nodePhenotype, _connectionData, _nodeData, activationFunctionNames, _width, _height, _connectionRadius, numInputs, numOutputs));
 
 	if (_program.build(std::vector<cl::Device>(1, cs.getDevice())) != CL_SUCCESS) {
@@ -209,8 +224,6 @@ void Field2D::create(Field2DGenes &genes, ComputeSystem &cs, int width, int heig
 void Field2D::update(float reward, ComputeSystem &cs, const std::vector<std::function<float(float)>> &activationFunctions, int substeps, std::mt19937 &generator) {
 	std::uniform_real_distribution<float> distSeedX(0.0f, static_cast<float>(_width));
 	std::uniform_real_distribution<float> distSeedY(0.0f, static_cast<float>(_height));
-	
-	//reward = 0.0f;
 
 	// Create input image
 	std::vector<float> inputBuffer(getNumInputs() * _connectionResponseSize);
@@ -237,20 +250,24 @@ void Field2D::update(float reward, ComputeSystem &cs, const std::vector<std::fun
 		seed._y = distSeedY(generator);
 
 		_kernel.setArg(0, _buffers[_currentReadBufferIndex]);
-		_kernel.setArg(1, _buffers[_currentWriteBufferIndex]);
-		_kernel.setArg(2, _typeImage);
-		_kernel.setArg(3, _inputImage);
-		_kernel.setArg(4, _outputImage);
-		_kernel.setArg(5, *_randomImage);
-		_kernel.setArg(6, seed);
-		_kernel.setArg(7, reward);
+		_kernel.setArg(1, _gasBuffers[_currentReadBufferIndex]);
+		_kernel.setArg(2, _buffers[_currentWriteBufferIndex]);
+		_kernel.setArg(3, _gasBuffers[_currentWriteBufferIndex]);
+		_kernel.setArg(4, _typeImage);
+		_kernel.setArg(5, _inputImage);
+		_kernel.setArg(6, _outputImage);
+		_kernel.setArg(7, *_randomImage);
+		_kernel.setArg(8, seed);
+		_kernel.setArg(9, reward);
 
-		cs.getQueue().enqueueNDRangeKernel(_kernel, cl::NullRange, cl::NDRange(_numNodes));
+		cl::Event event;
+
+		cs.getQueue().enqueueNDRangeKernel(_kernel, cl::NullRange, cl::NDRange(_numNodes), cl::NullRange, nullptr, &event);
+
+		event.wait();
 
 		// Swap buffer read/write
 		std::swap(_currentReadBufferIndex, _currentWriteBufferIndex);
-
-		cs.getQueue().finish();
 	}
 
 	// Gather outputs
@@ -266,11 +283,11 @@ void Field2D::update(float reward, ComputeSystem &cs, const std::vector<std::fun
 
 	std::vector<float> outputBuffer(getNumOutputs() * _nodeOutputSize);
 
-	cs.getQueue().finish();
+	cl::Event event;
 
-	cs.getQueue().enqueueReadImage(_outputImage, CL_TRUE, origin, region, 0, 0, &outputBuffer[0]);
+	cs.getQueue().enqueueReadImage(_outputImage, CL_TRUE, origin, region, 0, 0, &outputBuffer[0], nullptr, &event);
 
-	cs.getQueue().finish();
+	event.wait();
 
 	// Decode
 	int outputBufferIndex = 0;
@@ -282,5 +299,43 @@ void Field2D::update(float reward, ComputeSystem &cs, const std::vector<std::fun
 		_decoderPhenotypes[i].update(activationFunctions);
 
 		_outputs[i] = _decoderPhenotypes[i].getOutput(0)._output;
+	}
+
+	// Blur gas
+	unsigned char _currentBlurReadBufferIndex = _currentWriteBufferIndex;
+	unsigned char _currentBlurWriteBufferIndex = _currentReadBufferIndex;
+
+	for (int i = 0; i < _numGasBlurPasses; i++) {
+		{
+			_gasBlurKernelX->setArg(0, _gasBuffers[_currentBlurReadBufferIndex]);
+			_gasBlurKernelX->setArg(1, _gasBuffers[_currentBlurWriteBufferIndex]);
+			_gasBlurKernelX->setArg(2, getWidth());
+			_gasBlurKernelX->setArg(3, getHeight());
+			_gasBlurKernelX->setArg(4, getNumNodes());
+
+			cl::Event event;
+
+			cs.getQueue().enqueueNDRangeKernel(*_gasBlurKernelX, cl::NullRange, cl::NDRange(getWidth(), getHeight(), getNumGases()), cl::NullRange, nullptr, &event);
+
+			event.wait();
+
+			std::swap(_currentBlurReadBufferIndex, _currentBlurWriteBufferIndex);
+		}
+
+		{
+			_gasBlurKernelY->setArg(0, _gasBuffers[_currentBlurReadBufferIndex]);
+			_gasBlurKernelY->setArg(1, _gasBuffers[_currentBlurWriteBufferIndex]);
+			_gasBlurKernelY->setArg(2, getWidth());
+			_gasBlurKernelY->setArg(3, getHeight());
+			_gasBlurKernelY->setArg(4, getNumNodes());
+
+			cl::Event event;
+
+			cs.getQueue().enqueueNDRangeKernel(*_gasBlurKernelY, cl::NullRange, cl::NDRange(getWidth(), getHeight(), getNumGases()), cl::NullRange, nullptr, &event);
+
+			event.wait();
+
+			std::swap(_currentBlurReadBufferIndex, _currentBlurWriteBufferIndex);
+		}
 	}
 }

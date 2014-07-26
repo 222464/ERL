@@ -34,6 +34,10 @@ namespace erl {
 		std::shared_ptr<neat::EvolverSettings> _settings;
 
 		std::shared_ptr<cl::Image2D> _randomImage;
+		std::shared_ptr<cl::Program> _blurProgram;
+		std::shared_ptr<cl::Kernel> _blurKernelX;
+		std::shared_ptr<cl::Kernel> _blurKernelY;
+
 		std::vector<std::function<float(float)>> _activationFunctions;
 		std::vector<std::string> _activationFunctionNames;
 		float _minInitRec, _maxInitRec;
@@ -48,6 +52,9 @@ namespace erl {
 		void create(const std::vector<float> &functionChances,
 			const std::shared_ptr<neat::EvolverSettings> &settings,
 			const std::shared_ptr<cl::Image2D> &randomImage,
+			const std::shared_ptr<cl::Program> &blurProgram,
+			const std::shared_ptr<cl::Kernel> &blurKernelX,
+			const std::shared_ptr<cl::Kernel> &blurKernelY,
 			const std::vector<std::function<float(float)>> &activationFunctions,
 			const std::vector<std::string> &activationFunctionNames,
 			float minInitRec, float maxInitRec,

@@ -30,6 +30,9 @@
 
 float ExperimentAND::evaluate(erl::Field2DGenes &fieldGenes, const neat::EvolverSettings &settings,
 	const std::shared_ptr<cl::Image2D> &randomImage,
+	const std::shared_ptr<cl::Program> &blurProgram,
+	const std::shared_ptr<cl::Kernel> &blurKernelX,
+	const std::shared_ptr<cl::Kernel> &blurKernelY,
 	const std::vector<std::function<float(float)>> &activationFunctions,
 	const std::vector<std::string> &activationFunctionNames,
 	float minInitRec, float maxInitRec, erl::Logger &logger,
@@ -51,12 +54,14 @@ float ExperimentAND::evaluate(erl::Field2DGenes &fieldGenes, const neat::Evolver
 
 	erl::Field2D field;
 
-	field.create(fieldGenes, cs, 10, 10, 2, 2, 1, randomImage, activationFunctions, activationFunctionNames, minInitRec, maxInitRec, generator, logger);
+	field.create(fieldGenes, cs, 10, 10, 2, 2, 1, randomImage, blurProgram, blurKernelX, blurKernelY, activationFunctions, activationFunctionNames, minInitRec, maxInitRec, generator, logger);
 
 	float reward = 0.0f;
 	float prevReward = 0.0f;
 
 	float initReward = 0.0f;
+
+	float totalReward = 0.0f;
 
 	std::vector<float> values(4);
 
@@ -72,9 +77,9 @@ float ExperimentAND::evaluate(erl::Field2DGenes &fieldGenes, const neat::Evolver
 			field.setInput(0, inputs[j][0]);
 			field.setInput(1, inputs[j][1]);
 
-			field.update((reward - prevReward) * 50.0f, cs, activationFunctions, 14, generator);
+			field.update((reward - prevReward) * 10.0f, cs, activationFunctions, 14, generator);
 
-			newReward -= std::pow(std::abs(outputs[j] - field.getOutput(0)), 0.25f) * 0.25f;
+			newReward -= std::pow(std::abs(outputs[j] - field.getOutput(0)), 2.0f) * 0.25f;
 
 			values[j] = field.getOutput(0);
 			average += values[j];
@@ -92,12 +97,14 @@ float ExperimentAND::evaluate(erl::Field2DGenes &fieldGenes, const neat::Evolver
 		if (i == 0)
 			initReward = std::min<float>(1.0f, std::max<float>(0.0f, reward));
 
+		totalReward += reward * 0.5f;
+
 		//fv.update(cs, field);
 
 		cl::flush();
 	}
 
-	std::cout << "Finished AND experiment with total reward of " << reward << "." << std::endl;
+	std::cout << "Finished AND experiment with total reward of " << totalReward << "." << std::endl;
 
-	return reward;
+	return totalReward;
 }

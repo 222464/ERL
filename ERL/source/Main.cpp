@@ -29,7 +29,7 @@ Main
 #include <fstream>
 
 // Sets the mode of execution
-#define TRAIN_ERL
+//#define TRAIN_ERL
 
 int main() {
 	std::cout << "Welcome to ERL. Version " << ERL_VERSION << std::endl;
@@ -44,21 +44,21 @@ int main() {
 
 	std::mt19937 generator(time(nullptr));
 
-	std::vector<float> functionChances(2);
-	std::vector<std::string> functionNames(2);
-	std::vector<std::function<float(float)>> functions(2);
+	std::vector<float> functionChances(3);
+	std::vector<std::string> functionNames(3);
+	std::vector<std::function<float(float)>> functions(3);
 
 	functionChances[0] = 1.0f;
 	functionChances[1] = 1.0f;
-	//functionChances[2] = 1.0f;
+	functionChances[2] = 1.0f;
 
 	functionNames[0] = "sigmoid";
 	functionNames[1] = "sin";
-	//functionNames[2] = "linear";
+	functionNames[2] = "linear";
 
 	functions[0] = std::bind(neat::Neuron::sigmoid, std::placeholders::_1);
 	functions[1] = std::bind(std::sinf, std::placeholders::_1);
-	//functions[2] = std::bind([](float x) { return std::min<float>(2.0f, std::max<float>(-2.0f, x)); }, std::placeholders::_1);
+	functions[2] = std::bind([](float x) { return std::min<float>(2.0f, std::max<float>(-2.0f, x)); }, std::placeholders::_1);
 
 	// Load random texture
 	sf::Image sfmlImage;
@@ -78,6 +78,33 @@ int main() {
 
 	std::shared_ptr<cl::Image2D> randomImage(new cl::Image2D(cs.getContext(), CL_MEM_READ_ONLY | CL_MEM_COPY_HOST_PTR, cl::ImageFormat(CL_RGBA, CL_UNORM_INT8), softImage.getWidth(), softImage.getHeight(), 0, softImage.getData()));
 
+	// Read source
+	std::ifstream is("gasBlur.cl");
+
+	if (!is.is_open()) {
+		logger << "Could not open gas blur kernel!" << erl::endl;
+		abort();
+	}
+
+	std::string blurSource = "";
+
+	while (!is.eof() && is.good()) {
+		std::string line;
+		std::getline(is, line);
+
+		blurSource += line + "\n";
+	}
+
+	std::shared_ptr<cl::Program> blurProgram(new cl::Program(cs.getContext(), blurSource));
+
+	if (blurProgram->build({ cs.getDevice() }) != CL_SUCCESS) {
+		logger << "Error building: " << blurProgram->getBuildInfo<CL_PROGRAM_BUILD_LOG>(cs.getDevice()) << erl::endl;
+		abort();
+	}
+
+	std::shared_ptr<cl::Kernel> blurKernelX(new cl::Kernel(*blurProgram, "blurX"));
+	std::shared_ptr<cl::Kernel> blurKernelY(new cl::Kernel(*blurProgram, "blurY"));
+
 #ifdef TRAIN_ERL
 	// ------------------------------------------- Training -------------------------------------------
 
@@ -85,11 +112,12 @@ int main() {
 
 	erl::EvolutionaryTrainer trainer;
 
-	trainer.create(functionChances, settings, randomImage, functions, functionNames, -1.0f, 1.0f, generator);
+	trainer.create(functionChances, settings, randomImage, blurProgram, blurKernelX, blurKernelY, functions, functionNames, -1.0f, 1.0f, generator);
 
 	trainer.addExperiment(std::shared_ptr<erl::Experiment>(new ExperimentPoleBalancing()));
 	//trainer.addExperiment(std::shared_ptr<erl::Experiment>(new ExperimentOR()));
 	//trainer.addExperiment(std::shared_ptr<erl::Experiment>(new ExperimentAND()));
+	//trainer.addExperiment(std::shared_ptr<erl::Experiment>(new ExperimentXOR()));
 
 	for (size_t g = 0; g < 10000; g++) {
 		logger << "Evaluating generation " << std::to_string(g + 1) << "." << erl::endl;
@@ -100,7 +128,7 @@ int main() {
 
 		trainer.reproduce(generator);
 
-		logger << "Saving best to \"hypernet1.txt\"" << erl::endl;
+		logger << "Saving best to \"erl1.txt\"" << erl::endl;
 
 		std::ofstream toFile("erlBestResultSoFar.txt");
 
@@ -122,21 +150,21 @@ int main() {
 
 	erl::Field2DGenes genes;
 
-	std::ifstream fromFile("erlBestResultSoFar.txt");
+	//std::ifstream fromFile("erlBestResultSoFar.txt");
 
-	genes.readFromStream(fromFile);
+	//genes.readFromStream(fromFile);
 
-	fromFile.close();
+	//fromFile.close();
 
-	//neat::InnovationNumberType innovNum;
+	neat::InnovationNumberType innovNum;
 
-	//genes.initialize(2, 1, settings.get(), functionChances, innovNum, generator);
+	genes.initialize(2, 1, settings.get(), functionChances, innovNum, generator);
 
 	erl::Field2D field;
 
 	float sizeScalar = 800.0f / 400.0f;
 
-	field.create(genes, cs, 400, 400, 2, 2, 1, randomImage, functions, functionNames, -1.0f, 1.0f, generator, logger);
+	field.create(genes, cs, 400, 400, 4, 2, 1, randomImage, blurProgram, blurKernelX, blurKernelY, functions, functionNames, -1.0f, 1.0f, generator, logger);
 
 	field.setInput(0, 10.0f);
 	field.setInput(1, 10.0f);
@@ -163,10 +191,8 @@ int main() {
 
 		sf::Event windowEvent;
 
-		while (window.pollEvent(windowEvent))
-		{
-			switch (windowEvent.type)
-			{
+		while (window.pollEvent(windowEvent)) {
+			switch (windowEvent.type) {
 			case sf::Event::Closed:
 				quit = true;
 				break;

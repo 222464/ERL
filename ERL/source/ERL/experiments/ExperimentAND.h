@@ -31,6 +31,9 @@ public:
 	// Inherited from Experiment
 	float evaluate(erl::Field2DGenes &fieldGenes, const neat::EvolverSettings &settings,
 		const std::shared_ptr<cl::Image2D> &randomImage,
+		const std::shared_ptr<cl::Program> &blurProgram,
+		const std::shared_ptr<cl::Kernel> &blurKernelX,
+		const std::shared_ptr<cl::Kernel> &blurKernelY,
 		const std::vector<std::function<float(float)>> &activationFunctions,
 		const std::vector<std::string> &activationFunctionNames,
 		float minInitRec, float maxInitRec, erl::Logger &logger,

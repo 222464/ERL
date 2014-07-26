@@ -26,13 +26,20 @@ namespace erl {
 
 	private:
 		std::array<cl::Buffer, 2> _buffers;
+		std::array<cl::Buffer, 2> _gasBuffers;
 		//std::function<cl::Event(const cl::EnqueueArgs&, cl::Buffer&, cl::Buffer&, cl::Image2D&, cl::Image1D&, cl::Image1D&, cl::Image2D&, RandomSeed, float)> _kernelFunctor;
+
+		int _numGases;
 
 		unsigned char _currentReadBufferIndex;
 		unsigned char _currentWriteBufferIndex;
 
 		cl::Program _program;
 		cl::Kernel _kernel;
+
+		std::shared_ptr<cl::Program> _gasBlurProgram;
+		std::shared_ptr<cl::Kernel> _gasBlurKernelX;
+		std::shared_ptr<cl::Kernel> _gasBlurKernelY;
 
 		cl::Image2D _typeImage;
 
@@ -70,10 +77,15 @@ namespace erl {
 		std::vector<neat::NetworkPhenotype> _decoderPhenotypes;
 
 	public:
+		int _numGasBlurPasses;
+
 		Field2D();
 
 		void create(Field2DGenes &genes, ComputeSystem &cs, int width, int height, int connectionRadius, int numInputs, int numOutputs,
 			const std::shared_ptr<cl::Image2D> &randomImage,
+			const std::shared_ptr<cl::Program> &gasBlurProgram,
+			const std::shared_ptr<cl::Kernel> &gasBlurKernelX,
+			const std::shared_ptr<cl::Kernel> &gasBlurKernelY,
 			const std::vector<std::function<float(float)>> &activationFunctions, const std::vector<std::string> &activationFunctionNames,
 			float minRecInit, float maxRecInit, std::mt19937 &generator,
 			Logger &logger);
@@ -94,6 +106,10 @@ namespace erl {
 
 		int getNodeOutputSize() const {
 			return _nodeOutputSize;
+		}
+
+		int getNumGases() const {
+			return _numGases;
 		}
 
 		int getWidth() const {

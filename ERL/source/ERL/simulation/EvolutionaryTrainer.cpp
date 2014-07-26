@@ -29,12 +29,15 @@ misrepresented as being the original software.
 using namespace erl;
 
 EvolutionaryTrainer::EvolutionaryTrainer()
-: _runsPerExperiment(1)
+: _runsPerExperiment(6)
 {}
 
 void EvolutionaryTrainer::create(const std::vector<float> &functionChances,
 	const std::shared_ptr<neat::EvolverSettings> &settings,
 	const std::shared_ptr<cl::Image2D> &randomImage,
+	const std::shared_ptr<cl::Program> &blurProgram,
+	const std::shared_ptr<cl::Kernel> &blurKernelX,
+	const std::shared_ptr<cl::Kernel> &blurKernelY,
 	const std::vector<std::function<float(float)>> &activationFunctions,
 	const std::vector<std::string> &activationFunctionNames,
 	float minInitRec, float maxInitRec,
@@ -42,6 +45,9 @@ void EvolutionaryTrainer::create(const std::vector<float> &functionChances,
 {
 	_settings = settings;
 	_randomImage = randomImage;
+	_blurProgram = blurProgram;
+	_blurKernelX = blurKernelX;
+	_blurKernelY = blurKernelY;
 	_activationFunctions = activationFunctions;
 	_activationFunctionNames = activationFunctionNames;
 	_minInitRec = minInitRec;
@@ -63,7 +69,7 @@ void EvolutionaryTrainer::evaluate(ComputeSystem &cs, Logger &logger, std::mt199
 		float experimentFitness = 0.0f;
 
 		for (size_t k = 0; k < _runsPerExperiment; k++)
-			experimentFitness += _experiments[j]->evaluate(*std::static_pointer_cast<Field2DGenes>(_evolutionaryAlgorithm._population[i]._genotype), *_settings, _randomImage, _activationFunctions, _activationFunctionNames, _minInitRec, _maxInitRec, logger, cs, generator);
+			experimentFitness += _experiments[j]->evaluate(*std::static_pointer_cast<Field2DGenes>(_evolutionaryAlgorithm._population[i]._genotype), *_settings, _randomImage, _blurProgram, _blurKernelX, _blurKernelY, _activationFunctions, _activationFunctionNames, _minInitRec, _maxInitRec, logger, cs, generator);
 
 		experimentFitness /= _runsPerExperiment;
 

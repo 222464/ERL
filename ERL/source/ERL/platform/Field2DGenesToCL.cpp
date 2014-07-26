@@ -33,11 +33,12 @@ std::string erl::field2DGenesNodeUpdateToCL(erl::Field2DGenes &genes, const erl:
 		"// Dimensions of field\n"
 		"constant int fieldWidth = " + std::to_string(fieldWidth) + ";\n"
 		"constant int fieldHeight = " + std::to_string(fieldHeight) + ";\n"
-		"constant float fieldWidthInv = " + std::to_string(1.0f / fieldWidth) + ";\n"
-		"constant float fieldHeightInv = " + std::to_string(1.0f / fieldHeight) + ";\n"
-		"constant float numInputs = " + std::to_string(numInputs) + ";\n"
-		"constant float numOutputs = " + std::to_string(numOutputs) + ";\n"
-		"constant float randomImageSizeInv = 0.0078125;\n"
+		"constant int fieldArea = " + std::to_string(fieldWidth * fieldHeight) + ";\n"
+		"constant float fieldWidthInv = " + std::to_string(1.0f / fieldWidth) + "f;\n"
+		"constant float fieldHeightInv = " + std::to_string(1.0f / fieldHeight) + "f;\n"
+		"constant int numInputs = " + std::to_string(numInputs) + ";\n"
+		"constant int numOutputs = " + std::to_string(numOutputs) + ";\n"
+		"constant float randomImageSizeInv = 0.0078125f;\n"
 		"\n"
 		"// Connection offsets\n"
 		"constant int2 offsets[" + std::to_string(field.getNumConnections()) + "] = {\n";
@@ -87,9 +88,10 @@ std::string erl::field2DGenesNodeUpdateToCL(erl::Field2DGenes &genes, const erl:
 		"constant int connectionSize = " + std::to_string(field.getConnectionSize()) + ";\n"
 		"constant int nodeSize = " + std::to_string(field.getNodeSize()) + ";\n"
 		"constant int numConnections = " + std::to_string(field.getNumConnections()) + ";\n"
+		"constant int numGases = " + std::to_string(field.getNumGases()) + ";\n"
 		"\n"
 		"// The kernel\n"
-		"void kernel nodeUpdate(global const float* source, global float* destination, read_only image2d_t typeImage, read_only image1d_t inputImage, write_only image1d_t outputImage, read_only image2d_t randomImage, float2 randomSeed, float reward) {\n"
+		"void kernel nodeUpdate(global const float* source, global const float* gasSource, global float* destination, global float* gasDestination, read_only image2d_t typeImage, read_only image1d_t inputImage, write_only image1d_t outputImage, read_only image2d_t randomImage, float2 randomSeed, float reward) {\n"
 		"	int nodeIndex = get_global_id(0);\n"
 		"	int nodeStartOffset = nodeIndex * nodeAndConnectionsSize;\n"
 		"	int connectionsStartOffset = nodeStartOffset + nodeSize;\n"
@@ -140,6 +142,7 @@ std::string erl::field2DGenesNodeUpdateToCL(erl::Field2DGenes &genes, const erl:
 		"		int connectionNodeIndex = connectionNodePosition.x + connectionNodePosition.y * fieldWidth;\n"
 		"		int connectionNodeStartOffset = connectionNodeIndex * nodeAndConnectionsSize;\n"
 		"		int connectionStartOffset = connectionsStartOffset + ci * connectionSize;\n"
+		"		float connectionNodeType = source[connectionNodeStartOffset + " + std::to_string(genes.getNodeOutputSize()) + "];\n"	
 		"\n";
 
 	// Provide temporaries for holding outputs
@@ -162,7 +165,7 @@ std::string erl::field2DGenesNodeUpdateToCL(erl::Field2DGenes &genes, const erl:
 
 	// Type, random, and reward inputs
 	code +=
-		"nodeType, read_imagef(randomImage, normalizedRepeatNearestSampler, (float2)(connectionNodePosition.x + nodePosition.x, connectionNodePosition.y + nodePosition.y) * randomImageSizeInv).x, reward, ";
+		"nodeType, connectionNodeType, (float)(offsets[ci].x), (float)(offsets[ci].y), read_imagef(randomImage, normalizedRepeatNearestSampler, (float2)(connectionNodePosition.x + nodePosition.x, connectionNodePosition.y + nodePosition.y) * randomImageSizeInv).x, reward, ";
 
 	// Add outputs
 	for (int i = 0; i < genes.getConnectionResponseSize(); i++) {
@@ -200,6 +203,16 @@ std::string erl::field2DGenesNodeUpdateToCL(erl::Field2DGenes &genes, const erl:
 		"	}\n"
 		"\n";
 
+	// Gather gas
+	for (int i = 0; i < field.getNumGases(); i++) {
+		code += "	float gasIn" + std::to_string(i) + " = gasSource[nodeIndex + fieldArea * " + std::to_string(i) + "];\n";
+	}
+
+	// Write values for new gas production
+	for (int i = 0; i < field.getNumGases(); i++) {
+		code += "	float gasOut" + std::to_string(i) + ";\n";
+	}
+
 	// Update activation
 	for (int i = 0; i < genes.getNodeOutputSize(); i++) {
 		code += "	float output" + std::to_string(i) + ";\n";
@@ -218,6 +231,11 @@ std::string erl::field2DGenesNodeUpdateToCL(erl::Field2DGenes &genes, const erl:
 		code += "responseSum" + std::to_string(i) + ", ";
 	}
 
+	// Add gas
+	for (int i = 0; i < genes.getNumGases(); i++) {
+		code += "gasIn" + std::to_string(i) + ", ";
+	}
+
 	// Type, random, and reward inputs
 	code +=
 		"nodeType, read_imagef(randomImage, normalizedRepeatNearestSampler, (float2)(nodePosition.x - 1, nodePosition.y - 1) * randomImageSizeInv).x, reward, ";
@@ -230,6 +248,11 @@ std::string erl::field2DGenesNodeUpdateToCL(erl::Field2DGenes &genes, const erl:
 	// Add recurrent connections
 	for (int i = 0; i < nodeRuleData._numRecurrentSourceNodes; i++) {
 		code += "&nodeRec" + std::to_string(i) + ", ";
+	}
+
+	// Add gas
+	for (int i = 0; i < genes.getNumGases(); i++) {
+		code += "&gasOut" + std::to_string(i) + ", ";
 	}
 
 	code.pop_back();
@@ -250,6 +273,14 @@ std::string erl::field2DGenesNodeUpdateToCL(erl::Field2DGenes &genes, const erl:
 
 	for (int i = 0; i < nodeRuleData._numRecurrentSourceNodes; i++) {
 		code += "	destination[nodeStartOffset + " + std::to_string(genes.getNodeOutputSize() + 1 + i) + "] = nodeRec" + std::to_string(i) + ";\n";
+	}
+
+	code +=
+		"\n"
+		"	// Assign gas production values to destination buffer\n";
+
+	for (int i = 0; i < genes.getNumGases(); i++) {
+		code += "	gasDestination[nodeIndex + fieldArea * " + std::to_string(i) + "] = gasOut" + std::to_string(i) + "; \n";
 	}
 
 	// Finish kernel by writing output if it exists

@@ -29,6 +29,9 @@
 
 float ExperimentPoleBalancing::evaluate(erl::Field2DGenes &fieldGenes, const neat::EvolverSettings &settings,
 	const std::shared_ptr<cl::Image2D> &randomImage,
+	const std::shared_ptr<cl::Program> &blurProgram,
+	const std::shared_ptr<cl::Kernel> &blurKernelX,
+	const std::shared_ptr<cl::Kernel> &blurKernelY,
 	const std::vector<std::function<float(float)>> &activationFunctions,
 	const std::vector<std::string> &activationFunctionNames,
 	float minInitRec, float maxInitRec, erl::Logger &logger,
@@ -36,19 +39,21 @@ float ExperimentPoleBalancing::evaluate(erl::Field2DGenes &fieldGenes, const nea
 {
 	erl::Field2D field;
 
-	field.create(fieldGenes, cs, 20, 20, 1, 4, 1, randomImage, activationFunctions, activationFunctionNames, minInitRec, maxInitRec, generator, logger);
+	field.create(fieldGenes, cs, 16, 16, 2, 4, 1, randomImage, blurProgram, blurKernelX, blurKernelY, activationFunctions, activationFunctionNames, minInitRec, maxInitRec, generator, logger);
+
+	std::uniform_real_distribution<float> initPosDist(-1.0f, 1.0f);
 
 	float pixelsPerMeter = 128.0f;
 	float poleLength = 1.0f;
 	float g = -2.8f;
 	float massMass = 20.0f;
 	float cartMass = 2.0f;
-	sf::Vector2f massPos(0.0f, poleLength);
 	sf::Vector2f massVel(0.0f, 0.0f);
 	float poleAngle = static_cast<float>(std::_Pi) * 0.0f;
 	float poleAngleVel = 0.0f;
 	float poleAngleAccel = 0.0f;
-	float cartX = 0.0f;
+	float cartX = initPosDist(generator);
+	sf::Vector2f massPos(cartX, poleLength);
 	float cartVelX = 0.0f;
 	float cartAccelX = 0.0f;
 	float poleRotationalFriction = 0.008f;
@@ -91,7 +96,7 @@ float ExperimentPoleBalancing::evaluate(erl::Field2DGenes &fieldGenes, const nea
 		field.setInput(2, std::fmodf(poleAngle + static_cast<float>(std::_Pi), 2.0f * static_cast<float>(std::_Pi)));
 		field.setInput(3, poleAngleVel);
 
-		field.update(error, cs, activationFunctions, 24, generator);
+		field.update(error, cs, activationFunctions, 20, generator);
 
 		float dir = std::min<float>(1.0f, std::max<float>(-1.0f, field.getOutput(0)));
 

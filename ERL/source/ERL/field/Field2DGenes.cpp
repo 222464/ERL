@@ -13,10 +13,11 @@ void Field2DGenes::initialize(size_t numInputs, size_t numOutputs, const neat::E
 
 	_connectionResponseSize = 1;
 	_nodeOutputSize = 1;
+	_numGases = 1;
 
-	// + 3 is for type, random, and reward inputs
-	_connectionUpdateGenotype.initialize(_nodeOutputSize + 3, _connectionResponseSize, pSettings, functionChances, innovationNumber, generator);
-	_activationUpdateGenotype.initialize(_connectionResponseSize + 3, _nodeOutputSize, pSettings, functionChances, innovationNumber, generator);
+	// + 3 is for type, random, and reward inputs. + 6 is 1 additional type as well as delta position for connections
+	_connectionUpdateGenotype.initialize(_nodeOutputSize + 6, _connectionResponseSize, pSettings, functionChances, innovationNumber, generator);
+	_activationUpdateGenotype.initialize(_connectionResponseSize + 3 + _numGases, _nodeOutputSize + _numGases, pSettings, functionChances, innovationNumber, generator);
 	_typeSetGenotype.initialize(2, 1, pSettings, functionChances, innovationNumber, generator);
 	_encoderGenotype.initialize(1, _connectionResponseSize, pSettings, functionChances, innovationNumber, generator);
 	_decoderGenotype.initialize(_nodeOutputSize, 1, pSettings, functionChances, innovationNumber, generator);
@@ -34,6 +35,7 @@ void Field2DGenes::crossover(const neat::EvolverSettings* pSettings, const std::
 	
 	pF2DChild->_connectionResponseSize = dist01(generator) < 0.5f ? _connectionResponseSize : pF2DOtherParent->_connectionResponseSize;
 	pF2DChild->_nodeOutputSize = dist01(generator) < 0.5f ? _nodeOutputSize : pF2DOtherParent->_nodeOutputSize;
+	pF2DChild->_numGases = dist01(generator) < 0.5f ? _numGases : pF2DOtherParent->_numGases;
 
 	_connectionUpdateGenotype.crossover(pSettings, functionChances, &pF2DOtherParent->_connectionUpdateGenotype, &pF2DChild->_connectionUpdateGenotype, fitnessForThis, fitnessForOtherParent, innovationNumber, generator);
 	_activationUpdateGenotype.crossover(pSettings, functionChances, &pF2DOtherParent->_activationUpdateGenotype, &pF2DChild->_activationUpdateGenotype, fitnessForThis, fitnessForOtherParent, innovationNumber, generator);
@@ -41,11 +43,11 @@ void Field2DGenes::crossover(const neat::EvolverSettings* pSettings, const std::
 	_encoderGenotype.crossover(pSettings, functionChances, &pF2DOtherParent->_encoderGenotype, &pF2DChild->_encoderGenotype, fitnessForThis, fitnessForOtherParent, innovationNumber, generator);
 	_decoderGenotype.crossover(pSettings, functionChances, &pF2DOtherParent->_decoderGenotype, &pF2DChild->_decoderGenotype, fitnessForThis, fitnessForOtherParent, innovationNumber, generator);
 
-	pF2DChild->_connectionUpdateGenotype.setNumInputs(_nodeOutputSize + 3, pSettings->_minBias, pSettings->_maxBias, functionChances, innovationNumber, generator); // + 3 for type, random, and reward inputs
+	pF2DChild->_connectionUpdateGenotype.setNumInputs(_nodeOutputSize + 6, pSettings->_minBias, pSettings->_maxBias, functionChances, innovationNumber, generator); // + 3 for type, random, and reward inputs
 	pF2DChild->_connectionUpdateGenotype.setNumOutputs(_connectionResponseSize, pSettings->_minBias, pSettings->_maxBias, functionChances, innovationNumber, generator);
 
-	pF2DChild->_activationUpdateGenotype.setNumInputs(_connectionResponseSize + 3, pSettings->_minBias, pSettings->_maxBias, functionChances, innovationNumber, generator); // + 3 for type, random, and reward inputs
-	pF2DChild->_activationUpdateGenotype.setNumOutputs(_nodeOutputSize, pSettings->_minBias, pSettings->_maxBias, functionChances, innovationNumber, generator);
+	pF2DChild->_activationUpdateGenotype.setNumInputs(_connectionResponseSize + 3 + _numGases, pSettings->_minBias, pSettings->_maxBias, functionChances, innovationNumber, generator); // + 3 for type, random, and reward inputs
+	pF2DChild->_activationUpdateGenotype.setNumOutputs(_nodeOutputSize + _numGases, pSettings->_minBias, pSettings->_maxBias, functionChances, innovationNumber, generator);
 
 	pF2DChild->_encoderGenotype.setNumOutputs(_connectionResponseSize, pSettings->_minBias, pSettings->_maxBias, functionChances, innovationNumber, generator);
 
@@ -105,11 +107,14 @@ void Field2DGenes::mutate(const neat::EvolverSettings* pSettings, const std::vec
 	if (dist01(generator) < pF2DSettings->_addNodeOutputChance)
 		_nodeOutputSize++;
 
-	_connectionUpdateGenotype.setNumInputs(_nodeOutputSize + 3, pSettings->_minBias, pSettings->_maxBias, functionChances, innovationNumber, generator);
+	if (dist01(generator) < pF2DSettings->_addGasChance)
+		_numGases++;
+
+	_connectionUpdateGenotype.setNumInputs(_nodeOutputSize + 6, pSettings->_minBias, pSettings->_maxBias, functionChances, innovationNumber, generator);
 	_connectionUpdateGenotype.setNumOutputs(_connectionResponseSize, pSettings->_minBias, pSettings->_maxBias, functionChances, innovationNumber, generator);
 
-	_activationUpdateGenotype.setNumInputs(_connectionResponseSize + 3, pSettings->_minBias, pSettings->_maxBias, functionChances, innovationNumber, generator);
-	_activationUpdateGenotype.setNumOutputs(_nodeOutputSize, pSettings->_minBias, pSettings->_maxBias, functionChances, innovationNumber, generator);
+	_activationUpdateGenotype.setNumInputs(_connectionResponseSize + 3 + _numGases, pSettings->_minBias, pSettings->_maxBias, functionChances, innovationNumber, generator);
+	_activationUpdateGenotype.setNumOutputs(_nodeOutputSize + _numGases, pSettings->_minBias, pSettings->_maxBias, functionChances, innovationNumber, generator);
 
 	_encoderGenotype.setNumOutputs(_connectionResponseSize, pSettings->_minBias, pSettings->_maxBias, functionChances, innovationNumber, generator);
 
@@ -144,6 +149,7 @@ float Field2DGenes::getSimilarity(const neat::EvolverSettings* pSettings, const 
 
 	return std::abs(_connectionResponseSize - pF2DOther->_connectionResponseSize) * pF2DSettings->_connectionReponseDifferenceFactor +
 		std::abs(_nodeOutputSize - pF2DOther->_nodeOutputSize) * pF2DSettings->_nodeOutputSizeDifferenceFactor +
+		std::abs(_numGases - pF2DOther->_numGases) * pF2DSettings->_gasCountDifferenceFactor +
 		_connectionUpdateGenotype.getSimilarity(pSettings, functionChances, &pF2DOther->_connectionUpdateGenotype) +
 		_activationUpdateGenotype.getSimilarity(pSettings, functionChances, &pF2DOther->_activationUpdateGenotype) +
 		_typeSetGenotype.getSimilarity(pSettings, functionChances, &pF2DOther->_typeSetGenotype) +
