@@ -10,7 +10,7 @@ Field Visualizer
 #include <SFML/Graphics.hpp>
 
 #include <erl/platform/ComputeSystem.h>
-#include <erl/field/Field2D.h>
+#include <erl/field/Field2DCL.h>
 
 namespace erl {
 	class FieldVisualizer {
@@ -23,9 +23,9 @@ namespace erl {
 		SoftwareImage2D<sf::Color> _adaptedSoftImage;
 
 	public:
-		bool create(ComputeSystem &cs, const std::string &adapterFileName, const Field2D &field, Logger &logger);
+		bool create(ComputeSystem &cs, const std::string &adapterFileName, const Field2DCL &field, Logger &logger);
 
-		void update(ComputeSystem &cs, Field2D &field);
+		void update(ComputeSystem &cs, Field2DCL &field);
 
 		const SoftwareImage2D<sf::Color> &getSoftImage() {
 			return _adaptedSoftImage;

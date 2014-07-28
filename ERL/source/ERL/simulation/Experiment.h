@@ -24,7 +24,7 @@
 #pragma once
 
 #include <neat/Evolver.h>
-#include <erl/field/Field2D.h>
+#include <erl/field/Field2DCL.h>
 #include <erl/platform/ComputeSystem.h>
 
 namespace erl {

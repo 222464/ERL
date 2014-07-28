@@ -1,15 +1,14 @@
-#include <erl/field/Field2D.h>
+#include <erl/field/Field2DCL.h>
 
 #include <erl/platform/Field2DGenesToCL.h>
 
 using namespace erl;
 
-Field2D::Field2D()
-: _numGasBlurPasses(4),
-_inputStrengthScalar(10.0f)
+Field2DCL::Field2DCL()
+: _numGasBlurPasses(4)
 {}
 
-void Field2D::create(Field2DGenes &genes, ComputeSystem &cs, int width, int height, int connectionRadius, int numInputs, int numOutputs,
+void Field2DCL::create(Field2DGenes &genes, ComputeSystem &cs, int width, int height, int connectionRadius, int numInputs, int numOutputs,
 	int inputRange, int outputRange,
 	const std::shared_ptr<cl::Image2D> &randomImage,
 	const std::shared_ptr<cl::Program> &gasBlurProgram,
@@ -44,6 +43,10 @@ void Field2D::create(Field2DGenes &genes, ComputeSystem &cs, int width, int heig
 
 	_outputs.clear();
 	_outputs.assign(numOutputs, 0.0f);
+
+	_inputStrengthScalar = genes.getInputStrengthScalar();
+	_connectionStrengthScalar = genes.getConnectionStrengthScalar();
+	_nodeOutputStrengthScalar = genes.getNodeOutputStrengthScalar();
 
 	_numOutputsPerBlob = (outputRange + 1) * (outputRange + 1);
 
@@ -90,7 +93,7 @@ void Field2D::create(Field2DGenes &genes, ComputeSystem &cs, int width, int heig
 		std::tuple<float, float> newBounds = std::make_tuple<float, float>(distRecInit(generator), distRecInit(generator));
 
 		if (std::get<0>(newBounds) > std::get<1>(newBounds))
-			std::get<0>(newBounds) = std::get<1>(newBounds) = (std::get<0>(newBounds) +std::get<1>(newBounds)) * 0.5f;
+			std::get<0>(newBounds) = std::get<1>(newBounds) = (std::get<0>(newBounds) + std::get<1>(newBounds)) * 0.5f;
 
 		genes._recurrentNodeInitBounds.push_back(newBounds);
 	}
@@ -99,7 +102,7 @@ void Field2D::create(Field2DGenes &genes, ComputeSystem &cs, int width, int heig
 		std::tuple<float, float> newBounds = std::make_tuple<float, float>(distRecInit(generator), distRecInit(generator));
 
 		if (std::get<0>(newBounds) > std::get<1>(newBounds))
-			std::get<0>(newBounds) = std::get<1>(newBounds) = (std::get<0>(newBounds) +std::get<1>(newBounds)) * 0.5f;
+			std::get<0>(newBounds) = std::get<1>(newBounds) = (std::get<0>(newBounds) + std::get<1>(newBounds)) * 0.5f;
 
 		genes._recurrentConnectionInitBounds.push_back(newBounds);
 	}
@@ -210,8 +213,8 @@ void Field2D::create(Field2DGenes &genes, ComputeSystem &cs, int width, int heig
 	_typeImage = cl::Image2D(cs.getContext(), CL_MEM_READ_ONLY | CL_MEM_COPY_HOST_PTR, cl::ImageFormat(CL_RG, CL_UNSIGNED_INT8), _width, _height, 0, typeSoftwareImage.getData());
 
 	// Create OpenCL buffers
-	_buffers[0] = cl::Buffer(cs.getContext(), CL_MEM_READ_WRITE | CL_MEM_COPY_HOST_PTR, _bufferSize * sizeof(float), &buffer[0]);
-	_buffers[1] = cl::Buffer(cs.getContext(), CL_MEM_READ_WRITE | CL_MEM_COPY_HOST_PTR, _bufferSize * sizeof(float), &buffer[0]);
+	_buffers[0] = cl::Buffer(cs.getContext(), CL_MEM_READ_WRITE | CL_MEM_COPY_HOST_PTR, buffer.size() * sizeof(float), &buffer[0]);
+	_buffers[1] = cl::Buffer(cs.getContext(), CL_MEM_READ_WRITE | CL_MEM_COPY_HOST_PTR, buffer.size() * sizeof(float), &buffer[0]);
 
 	std::vector<float> gasInit(_numNodes * _numGases, 0.0f);
 
@@ -220,7 +223,7 @@ void Field2D::create(Field2DGenes &genes, ComputeSystem &cs, int width, int heig
 	
 	std::vector<float> outputBuffer(getNumOutputs() * _nodeOutputSize * _numOutputsPerBlob, 0.0f);
 
-	_outputImage = cl::Image1D(cs.getContext(), CL_MEM_WRITE_ONLY | CL_MEM_COPY_HOST_PTR, cl::ImageFormat(CL_R, CL_FLOAT), getNumOutputs(), &outputBuffer[0]);
+	_outputImage = cl::Image1D(cs.getContext(), CL_MEM_WRITE_ONLY | CL_MEM_COPY_HOST_PTR, cl::ImageFormat(CL_R, CL_FLOAT), outputBuffer.size(), &outputBuffer[0]);
 
 	_program = cl::Program(cs.getContext(), field2DGenesNodeUpdateToCL(genes, *this, _connectionPhenotype, _nodePhenotype, _connectionData, _nodeData, activationFunctionNames, _width, _height, _connectionRadius, numInputs, numOutputs));
 
@@ -243,7 +246,7 @@ void Field2D::create(Field2DGenes &genes, ComputeSystem &cs, int width, int heig
 		_decoderPhenotypes[i].create(genes.getDecoderGenotype());
 }
 
-void Field2D::update(float reward, ComputeSystem &cs, const std::vector<std::function<float(float)>> &activationFunctions, int substeps, std::mt19937 &generator) {
+void Field2DCL::update(float reward, ComputeSystem &cs, const std::vector<std::function<float(float)>> &activationFunctions, int substeps, std::mt19937 &generator) {
 	std::uniform_real_distribution<float> distSeedX(0.0f, static_cast<float>(_width));
 	std::uniform_real_distribution<float> distSeedY(0.0f, static_cast<float>(_height));
 
@@ -261,7 +264,7 @@ void Field2D::update(float reward, ComputeSystem &cs, const std::vector<std::fun
 			inputBuffer[inputBufferIndex++] = _encoderPhenotypes[i].getOutput(j)._output * _inputStrengthScalar;
 	}
 
-	_inputImage = cl::Image1D(cs.getContext(), CL_MEM_READ_ONLY | CL_MEM_COPY_HOST_PTR, cl::ImageFormat(CL_R, CL_FLOAT), getNumInputs(), &inputBuffer[0]);
+	_inputImage = cl::Image1D(cs.getContext(), CL_MEM_READ_ONLY | CL_MEM_COPY_HOST_PTR, cl::ImageFormat(CL_R, CL_FLOAT), inputBuffer.size(), &inputBuffer[0]);
 
 	// Execute kernel
 	//_kernelFunctor(cl::EnqueueArgs(cl::NDRange(_numNodes)), _buffers[_currentReadBufferIndex], _buffers[_currentWriteBufferIndex], _typeImage, _inputImage, _outputImage, *_randomImage, seed, reward).wait();
@@ -284,7 +287,7 @@ void Field2D::update(float reward, ComputeSystem &cs, const std::vector<std::fun
 
 		cl::Event event;
 
-		cs.getQueue().enqueueNDRangeKernel(_kernel, cl::NullRange, cl::NDRange(_numNodes), cl::NullRange, nullptr, &event);
+		cs.getQueue().enqueueNDRangeKernel(_kernel, cl::NullRange, cl::NDRange(_width, _height), cl::NullRange, nullptr, &event);
 
 		event.wait();
 
@@ -299,7 +302,7 @@ void Field2D::update(float reward, ComputeSystem &cs, const std::vector<std::fun
 	origin[2] = 0;
 
 	cl::size_t<3> region;
-	region[0] = getNumOutputs();
+	region[0] = getNumOutputs() * _nodeOutputSize * _numOutputsPerBlob;
 	region[1] = 1;
 	region[2] = 1;
 

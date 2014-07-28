@@ -34,14 +34,14 @@ EvolverSettings::EvolverSettings()
 : _speciationTolerance(100.0f),
 _preferSimilarFactor(0.05f),
 _reproduceRatio(0.9f),
-_newConnectionMutationRate(0.05f),
-_newNodeMutationRate(0.05f),
+_newConnectionMutationRate(0.1f),
+_newNodeMutationRate(0.1f),
 _weightPerturbationChance(0.2f),
 _disableGeneChance(0.08f),
-_minWeight(-1.0f),
-_maxWeight(1.0f),
-_minBias(-1.0f),
-_maxBias(1.0f),
+_minWeight(-0.3f),
+_maxWeight(0.3f),
+_minBias(-0.1f),
+_maxBias(0.1f),
 _maxPerturbation(0.05f),
 _changeFunctionChance(0.035f),
 _excessFactor(1.0f),
@@ -50,12 +50,13 @@ _averageWeightDifferenceFactor(0.4f),
 _inputCountDifferenceFactor(1.5f),
 _outputCountDifferenceFactor(1.5f),
 _functionFactor(2.0f),
-_populationSize(20),
+_populationSize(16),
 _numElites(3)
 {}
 
 Evolver::Evolver()
-: _innovationNumber(0)
+: _innovationNumber(0),
+_greedExponent(2.0f)
 {}
 
 void Evolver::normalizeFitness() {
@@ -65,8 +66,12 @@ void Evolver::normalizeFitness() {
 	if (_population[i]._fitness < _population[minIndex]._fitness)
 		minIndex = i;
 
-	for (size_t i = 0; i < _population.size(); i++)
-		_population[i]._fitness -= _population[minIndex]._fitness;
+	float minFitness = _population[minIndex]._fitness;
+
+	for (size_t i = 0; i < _population.size(); i++) {
+		_population[i]._fitness -= minFitness;
+		_population[i]._fitness = std::pow(_population[i]._fitness, _greedExponent);
+	}
 }
 
 void Evolver::clearPopulation() {

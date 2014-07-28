@@ -12,7 +12,7 @@ void kernel adapt(global const float* source, write_only image2d_t destination, 
 	int2 pixelPos = (int2)(get_global_id(0), get_global_id(1));
 	int lPos = pixelPos.x + pixelPos.y * width;
 
-	float color0 = sigmoid(source[lPos * nodeAndConnectionsSize + 0] * 3.0f);
+	float color0 = source[lPos * nodeAndConnectionsSize + 0] * 0.5f;
 
 	write_imagef(destination, pixelPos, (float4)(color0, color0, color0, 1.0f));
 }

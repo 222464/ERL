@@ -26,6 +26,21 @@ namespace erl {
 		float _averageInputStrengthScalarChance;
 		float _mutateInputStrengthChance;
 		float _maxInputStrengthPerturbation;
+		float _inputStrengthDifferenceFactor;
+
+		float _minInitConnectionStrengthScalar;
+		float _maxInitConnectionStrengthScalar;
+		float _averageConnectionStrengthScalarChance;
+		float _mutateConnectionStrengthChance;
+		float _maxConnectionStrengthPerturbation;
+		float _connectionStrengthDifferenceFactor;
+
+		float _minInitNodeOutputStrengthScalar;
+		float _maxInitNodeOutputStrengthScalar;
+		float _averageNodeOutputStrengthScalarChance;
+		float _mutateNodeOutputStrengthChance;
+		float _maxNodeOutputStrengthPerturbation;
+		float _nodeOutputStrengthDifferenceFactor;
 
 		Field2DEvolverSettings();
 	};

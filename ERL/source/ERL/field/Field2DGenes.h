@@ -23,6 +23,8 @@ namespace erl {
 		int _numGases;
 
 		float _inputStrengthScalar;
+		float _nodeOutputStrengthScalar;
+		float _connectionStrengthScalar;
 
 		std::vector<std::tuple<float, float>> _recurrentNodeInitBounds;
 		std::vector<std::tuple<float, float>> _recurrentConnectionInitBounds;
@@ -66,6 +68,18 @@ namespace erl {
 			return _numGases;
 		}
 
+		float getInputStrengthScalar() const {
+			return _inputStrengthScalar;
+		}
+
+		float getConnectionStrengthScalar() const {
+			return _connectionStrengthScalar;
+		}
+
+		float getNodeOutputStrengthScalar() const {
+			return _nodeOutputStrengthScalar;
+		}
+
 		void readFromStream(std::istream &is);
 		void writeToStream(std::ostream &os) const;
 
@@ -74,5 +88,6 @@ namespace erl {
 		}
 
 		friend class Field2D;
+		friend class Field2DCL;
 	};
 }

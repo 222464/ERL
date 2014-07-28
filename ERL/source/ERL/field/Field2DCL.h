@@ -13,7 +13,7 @@ Field2D
 #include <array>
 
 namespace erl {
-	class Field2D {
+	class Field2DCL {
 	public:
 		struct RandomSeed {
 			float _x, _y;
@@ -73,6 +73,8 @@ namespace erl {
 		int _numOutputsPerBlob;
 
 		float _inputStrengthScalar;
+		float _nodeOutputStrengthScalar;
+		float _connectionStrengthScalar;
 
 		std::vector<float> _inputs;
 		std::vector<float> _outputs;
@@ -83,7 +85,7 @@ namespace erl {
 	public:
 		int _numGasBlurPasses;
 
-		Field2D();
+		Field2DCL();
 
 		void create(Field2DGenes &genes, ComputeSystem &cs, int width, int height, int connectionRadius, int numInputs, int numOutputs,
 			int inputRange, int outputRange,
@@ -171,6 +173,14 @@ namespace erl {
 
 		float getInputStrengthScalar() const {
 			return _inputStrengthScalar;
+		}
+
+		float getConnectionStrengthScalar() const {
+			return _connectionStrengthScalar;
+		}
+
+		float getNodeOutputStrengthScalar() const {
+			return _nodeOutputStrengthScalar;
 		}
 
 		void setInput(int index, float value) {

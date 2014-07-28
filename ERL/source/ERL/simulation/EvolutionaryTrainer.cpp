@@ -29,7 +29,7 @@ misrepresented as being the original software.
 using namespace erl;
 
 EvolutionaryTrainer::EvolutionaryTrainer()
-: _runsPerExperiment(6)
+: _runsPerExperiment(3)
 {}
 
 void EvolutionaryTrainer::create(const std::vector<float> &functionChances,

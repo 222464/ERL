@@ -52,9 +52,9 @@ float ExperimentOR::evaluate(erl::Field2DGenes &fieldGenes, const neat::EvolverS
 		1.0f
 	};
 
-	erl::Field2D field;
+	erl::Field2DCL field;
 
-	field.create(fieldGenes, cs, 10, 10, 2, 2, 1, 3, 3, randomImage, blurProgram, blurKernelX, blurKernelY, activationFunctions, activationFunctionNames, minInitRec, maxInitRec, generator, logger);
+	field.create(fieldGenes, cs, 10, 10, 2, 2, 1, 1, 1, randomImage, blurProgram, blurKernelX, blurKernelY, activationFunctions, activationFunctionNames, minInitRec, maxInitRec, generator, logger);
 
 	float reward = 0.0f;
 	float prevReward = 0.0f;

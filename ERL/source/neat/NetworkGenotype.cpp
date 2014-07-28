@@ -1592,7 +1592,7 @@ void NetworkGenotype::readFromStream(std::istream &is) {
 	// Read all nodes (biases and innovation numbers)
 	// These nodes will have already been added when the connections were loaded
 	for (size_t i = 0; i < numNodes; i++)
-		is >> _connectionSet._nodes[i]._bias >> _connectionSet._nodes[i]._innovationNumber;
+		is >> _connectionSet._nodes[i]._bias >> _connectionSet._nodes[i]._activationFunctionIndex >> _connectionSet._nodes[i]._innovationNumber;
 }
 
 void NetworkGenotype::writeToStream(std::ostream &os) const {
@@ -1611,6 +1611,6 @@ void NetworkGenotype::writeToStream(std::ostream &os) const {
 	// Write all nodes (biases and innovation numbers)
 	for (size_t i = 0, numNodes = _connectionSet.getNumNodes(); i < numNodes; i++) {
 		const NodeData &node = _connectionSet._nodes[i];
-		os << node._bias << " " << node._innovationNumber << std::endl;
+		os << node._bias << " " << node._activationFunctionIndex << " " << node._innovationNumber << std::endl;
 	}
 }

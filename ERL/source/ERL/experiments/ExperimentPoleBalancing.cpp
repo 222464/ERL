@@ -37,11 +37,12 @@ float ExperimentPoleBalancing::evaluate(erl::Field2DGenes &fieldGenes, const nea
 	float minInitRec, float maxInitRec, erl::Logger &logger,
 	erl::ComputeSystem &cs, std::mt19937 &generator)
 {
-	erl::Field2D field;
+	erl::Field2DCL field;
 
-	field.create(fieldGenes, cs, 16, 16, 2, 4, 1, 3, 3, randomImage, blurProgram, blurKernelX, blurKernelY, activationFunctions, activationFunctionNames, minInitRec, maxInitRec, generator, logger);
+	field.create(fieldGenes, cs, 16, 16, 2, 4, 1, 1, 1, randomImage, blurProgram, blurKernelX, blurKernelY, activationFunctions, activationFunctionNames, minInitRec, maxInitRec, generator, logger);
 
 	std::uniform_real_distribution<float> initPosDist(-1.0f, 1.0f);
+	std::uniform_real_distribution<float> initPoleVelDist(-0.05f, 0.05f);
 
 	float pixelsPerMeter = 128.0f;
 	float poleLength = 1.0f;
@@ -50,7 +51,7 @@ float ExperimentPoleBalancing::evaluate(erl::Field2DGenes &fieldGenes, const nea
 	float cartMass = 2.0f;
 	sf::Vector2f massVel(0.0f, 0.0f);
 	float poleAngle = static_cast<float>(std::_Pi) * 0.0f;
-	float poleAngleVel = 0.0f;
+	float poleAngleVel = initPoleVelDist(generator);
 	float poleAngleAccel = 0.0f;
 	float cartX = initPosDist(generator);
 	sf::Vector2f massPos(cartX, poleLength);
@@ -68,7 +69,7 @@ float ExperimentPoleBalancing::evaluate(erl::Field2DGenes &fieldGenes, const nea
 
 	float totalFitness = 0.0f;
 
-	for (size_t i = 0; i < 600; i++) {
+	for (size_t i = 0; i < 500; i++) {
 		//std::cout << "Step " << i << std::endl;
 
 		// Update fitness
@@ -150,7 +151,7 @@ float ExperimentPoleBalancing::evaluate(erl::Field2DGenes &fieldGenes, const nea
 		cl::flush();
 	}
 
-	std::cout << "Pole balancing experiment finished with total fitness of " << totalFitness << "." << std::endl;
+	std::cout << "Pole balancing experiment finished with fitness of " << totalFitness << "." << std::endl;
 
 	return totalFitness;
 }

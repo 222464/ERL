@@ -89,6 +89,8 @@ namespace neat {
 
 		std::vector<GenotypeAndFitness> _population;
 
+		float _greedExponent;
+
 		Evolver();
 
 		void initialize(size_t numInputs, size_t numOutputs,

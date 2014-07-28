@@ -16,8 +16,12 @@ void Field2DGenes::initialize(size_t numInputs, size_t numOutputs, const neat::E
 	_numGases = 1;
 
 	std::uniform_real_distribution<float> inputStrengthScalarDist(pF2DSettings->_minInitInputStrengthScalar, pF2DSettings->_maxInitInputStrengthScalar);
+	std::uniform_real_distribution<float> connectionStrengthScalarDist(pF2DSettings->_minInitConnectionStrengthScalar, pF2DSettings->_maxInitConnectionStrengthScalar);
+	std::uniform_real_distribution<float> nodeOutputStrengthScalarDist(pF2DSettings->_minInitNodeOutputStrengthScalar, pF2DSettings->_maxInitNodeOutputStrengthScalar);
 
 	_inputStrengthScalar = inputStrengthScalarDist(generator);
+	_connectionStrengthScalar = connectionStrengthScalarDist(generator);
+	_nodeOutputStrengthScalar = nodeOutputStrengthScalarDist(generator);
 
 	// + 3 is for type, random, and reward inputs. + 6 is 1 additional type as well as delta position for connections
 	_connectionUpdateGenotype.initialize(_nodeOutputSize + 6, _connectionResponseSize, pSettings, functionChances, innovationNumber, generator);
@@ -42,6 +46,8 @@ void Field2DGenes::crossover(const neat::EvolverSettings* pSettings, const std::
 	pF2DChild->_numGases = dist01(generator) < 0.5f ? _numGases : pF2DOtherParent->_numGases;
 
 	pF2DChild->_inputStrengthScalar = dist01(generator) < pF2DSettings->_averageInputStrengthScalarChance ? (_inputStrengthScalar + pF2DOtherParent->_inputStrengthScalar) * 0.5f : (dist01(generator) < 0.5f ? _inputStrengthScalar : pF2DOtherParent->_inputStrengthScalar);
+	pF2DChild->_connectionStrengthScalar = dist01(generator) < pF2DSettings->_averageConnectionStrengthScalarChance ? (_connectionStrengthScalar + pF2DOtherParent->_connectionStrengthScalar) * 0.5f : (dist01(generator) < 0.5f ? _connectionStrengthScalar : pF2DOtherParent->_connectionStrengthScalar);
+	pF2DChild->_nodeOutputStrengthScalar = dist01(generator) < pF2DSettings->_averageNodeOutputStrengthScalarChance ? (_nodeOutputStrengthScalar + pF2DOtherParent->_nodeOutputStrengthScalar) * 0.5f : (dist01(generator) < 0.5f ? _nodeOutputStrengthScalar : pF2DOtherParent->_nodeOutputStrengthScalar);
 
 	_connectionUpdateGenotype.crossover(pSettings, functionChances, &pF2DOtherParent->_connectionUpdateGenotype, &pF2DChild->_connectionUpdateGenotype, fitnessForThis, fitnessForOtherParent, innovationNumber, generator);
 	_activationUpdateGenotype.crossover(pSettings, functionChances, &pF2DOtherParent->_activationUpdateGenotype, &pF2DChild->_activationUpdateGenotype, fitnessForThis, fitnessForOtherParent, innovationNumber, generator);
@@ -122,6 +128,18 @@ void Field2DGenes::mutate(const neat::EvolverSettings* pSettings, const std::vec
 		_inputStrengthScalar += inputStrengthPertDist(generator);
 	}
 
+	if (dist01(generator) < pF2DSettings->_mutateConnectionStrengthChance) {
+		std::uniform_real_distribution<float> connectionStrengthPertDist(-pF2DSettings->_maxConnectionStrengthPerturbation, pF2DSettings->_maxConnectionStrengthPerturbation);
+
+		_connectionStrengthScalar += connectionStrengthPertDist(generator);
+	}
+
+	if (dist01(generator) < pF2DSettings->_mutateNodeOutputStrengthChance) {
+		std::uniform_real_distribution<float> nodeOutputStrengthPertDist(-pF2DSettings->_maxNodeOutputStrengthPerturbation, pF2DSettings->_maxNodeOutputStrengthPerturbation);
+
+		_nodeOutputStrengthScalar += nodeOutputStrengthPertDist(generator);
+	}
+
 	_connectionUpdateGenotype.setNumInputs(_nodeOutputSize + 6, pSettings->_minBias, pSettings->_maxBias, functionChances, innovationNumber, generator);
 	_connectionUpdateGenotype.setNumOutputs(_connectionResponseSize, pSettings->_minBias, pSettings->_maxBias, functionChances, innovationNumber, generator);
 
@@ -162,6 +180,9 @@ float Field2DGenes::getSimilarity(const neat::EvolverSettings* pSettings, const 
 	return std::abs(_connectionResponseSize - pF2DOther->_connectionResponseSize) * pF2DSettings->_connectionReponseDifferenceFactor +
 		std::abs(_nodeOutputSize - pF2DOther->_nodeOutputSize) * pF2DSettings->_nodeOutputSizeDifferenceFactor +
 		std::abs(_numGases - pF2DOther->_numGases) * pF2DSettings->_gasCountDifferenceFactor +
+		std::abs(_inputStrengthScalar - pF2DOther->_inputStrengthScalar) * pF2DSettings->_inputStrengthDifferenceFactor +
+		std::abs(_connectionStrengthScalar - pF2DOther->_connectionStrengthScalar) * pF2DSettings->_connectionStrengthDifferenceFactor +
+		std::abs(_nodeOutputStrengthScalar - pF2DOther->_nodeOutputStrengthScalar) * pF2DSettings->_nodeOutputStrengthDifferenceFactor +
 		_connectionUpdateGenotype.getSimilarity(pSettings, functionChances, &pF2DOther->_connectionUpdateGenotype) +
 		_activationUpdateGenotype.getSimilarity(pSettings, functionChances, &pF2DOther->_activationUpdateGenotype) +
 		_typeSetGenotype.getSimilarity(pSettings, functionChances, &pF2DOther->_typeSetGenotype) +
@@ -170,7 +191,8 @@ float Field2DGenes::getSimilarity(const neat::EvolverSettings* pSettings, const 
 }
 
 void Field2DGenes::readFromStream(std::istream &is) {
-	is >> _connectionResponseSize >> _nodeOutputSize;
+	is >> _connectionResponseSize >> _nodeOutputSize >> _numGases;
+	is >> _inputStrengthScalar >> _connectionStrengthScalar >> _nodeOutputStrengthScalar;
 
 	int numRecurrentNode;
 	int numRecurrentConnection;
@@ -200,7 +222,8 @@ void Field2DGenes::readFromStream(std::istream &is) {
 }
 
 void Field2DGenes::writeToStream(std::ostream &os) const {
-	os << _connectionResponseSize << " " << _nodeOutputSize << std::endl;
+	os << _connectionResponseSize << " " << _nodeOutputSize << " " << _numGases << std::endl;
+	os << _inputStrengthScalar << " " << _connectionStrengthScalar << " " << _nodeOutputStrengthScalar << std::endl;
 
 	os << _recurrentNodeInitBounds.size() << " " << _recurrentConnectionInitBounds.size() << std::endl;
 
@@ -214,7 +237,7 @@ void Field2DGenes::writeToStream(std::ostream &os) const {
 		os << std::get<0>(_recurrentConnectionInitBounds[i]) << " " << std::get<1>(_recurrentConnectionInitBounds[i]) << " ";
 	}
 
-	os << std::endl;
+	os << std::endl << std::endl;;
 
 	_connectionUpdateGenotype.writeToStream(os);
 	os << std::endl;

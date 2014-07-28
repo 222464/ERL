@@ -2,7 +2,7 @@
 
 using namespace erl;
 
-bool FieldVisualizer::create(ComputeSystem &cs, const std::string &adapterFileName, const Field2D &field, Logger &logger) {
+bool FieldVisualizer::create(ComputeSystem &cs, const std::string &adapterFileName, const Field2DCL &field, Logger &logger) {
 	cl_int err;
 	
 	// Load program
@@ -47,7 +47,7 @@ bool FieldVisualizer::create(ComputeSystem &cs, const std::string &adapterFileNa
 	return true;
 }
 
-void FieldVisualizer::update(ComputeSystem &cs, Field2D &field) {
+void FieldVisualizer::update(ComputeSystem &cs, Field2DCL &field) {
 	//std::vector<cl::Memory> glObjects;
 	//glObjects.push_back(_adaptedImage);
 	//cs.getQueue().enqueueAcquireGLObjects(&glObjects);
