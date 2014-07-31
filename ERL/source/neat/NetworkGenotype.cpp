@@ -126,15 +126,15 @@ void NetworkGenotype::ConnectionSet::addConnectionKnown(float bias1, float bias2
 		setNumNodes(connection->_outIndex + 1, minBias, maxBias, functionChances, innovationNumber, generator);
 
 	// Node initialization: Initialize biases and innovation numbers if not already done so (no prior connections)
-	if (_nodes[connection->_inIndex]._connections.empty()) {
+	//if (_nodes[connection->_inIndex]._connections.empty()) {
 		_nodes[connection->_inIndex]._bias = bias1;
 		_nodes[connection->_inIndex]._innovationNumber = innovationNumber1;
-	}
+	//}
 
-	if (_nodes[connection->_outIndex]._connections.empty()) {
+	//if (_nodes[connection->_outIndex]._connections.empty()) {
 		_nodes[connection->_outIndex]._bias = bias2;
 		_nodes[connection->_outIndex]._innovationNumber = innovationNumber2;
-	}
+	//}
 
 	// Add connections
 	_nodes[connection->_inIndex]._connections.push_back(connection);

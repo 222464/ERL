@@ -33,7 +33,7 @@ using namespace neat;
 EvolverSettings::EvolverSettings()
 : _speciationTolerance(100.0f),
 _preferSimilarFactor(0.05f),
-_reproduceRatio(0.9f),
+_reproduceRatio(1.0f),
 _newConnectionMutationRate(0.1f),
 _newNodeMutationRate(0.1f),
 _weightPerturbationChance(0.2f),

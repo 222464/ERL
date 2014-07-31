@@ -29,7 +29,7 @@ misrepresented as being the original software.
 using namespace erl;
 
 EvolutionaryTrainer::EvolutionaryTrainer()
-: _runsPerExperiment(3)
+: _runsPerExperiment(10)
 {}
 
 void EvolutionaryTrainer::create(const std::vector<float> &functionChances,
@@ -68,10 +68,14 @@ void EvolutionaryTrainer::evaluate(ComputeSystem &cs, Logger &logger, std::mt199
 	for (size_t j = 0; j < _experiments.size(); j++) {
 		float experimentFitness = 0.0f;
 
+		logger << "Evaluating individual " << std::to_string(i + 1) << " of " << std::to_string(_evolutionaryAlgorithm.getPopulationSize()) << endl;
+
 		for (size_t k = 0; k < _runsPerExperiment; k++)
 			experimentFitness += _experiments[j]->evaluate(*std::static_pointer_cast<Field2DGenes>(_evolutionaryAlgorithm._population[i]._genotype), *_settings, _randomImage, _blurProgram, _blurKernelX, _blurKernelY, _activationFunctions, _activationFunctionNames, _minInitRec, _maxInitRec, logger, cs, generator);
 
 		experimentFitness /= _runsPerExperiment;
+
+		logger << "Individual " << std::to_string(i + 1) << "'s total fitness for experiment " << std::to_string(j + 1) << ": " << std::to_string(experimentFitness) << endl;
 
 		fitnesses[j][i] = experimentFitness;
 	}

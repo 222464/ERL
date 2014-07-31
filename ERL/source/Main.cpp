@@ -30,7 +30,8 @@ Main
 
 // Sets the mode of execution
 //#define TRAIN_ERL
-#define VISUALIZE_ERL
+//#define VISUALIZE_ERL
+#define EXPERIMENT_ERL
 
 int main() {
 	std::cout << "Welcome to ERL. Version " << ERL_VERSION << std::endl;
@@ -125,15 +126,15 @@ int main() {
 
 		trainer.evaluate(cs, logger, generator);
 
-		logger << "Reproducing generation " << std::to_string(g + 1) << "." << erl::endl;
-
-		trainer.reproduce(generator);
-
-		logger << "Saving best to \"erl1.txt\"" << erl::endl;
+		logger << "Saving best to \"erlBestResultSoFar.txt\"" << erl::endl;
 
 		std::ofstream toFile("erlBestResultSoFar.txt");
 
 		trainer.writeBestToStream(toFile);
+
+		logger << "Reproducing generation " << std::to_string(g + 1) << "." << erl::endl;
+
+		trainer.reproduce(generator);
 
 		toFile.close();
 
@@ -163,9 +164,9 @@ int main() {
 
 	erl::Field2DCL field;
 
-	float sizeScalar = 800.0f / 16.0f;
+	float sizeScalar = 800.0f / 64.0f;
 
-	field.create(genes, cs, 16, 16, 2, 4, 1, 1, 1, randomImage, blurProgram, blurKernelX, blurKernelY, functions, functionNames, -1.0f, 1.0f, generator, logger);
+	field.create(genes, cs, 32, 32, 2, 4, 1, 1, 1, randomImage, blurProgram, blurKernelX, blurKernelY, functions, functionNames, -1.0f, 1.0f, generator, logger);
 
 	field.setInput(0, 1.0f);
 	field.setInput(1, -1.0f);
@@ -214,7 +215,7 @@ int main() {
 
 		window.clear();
 
-		field.update(reward, cs, functions, 20, generator);
+		field.update(reward, cs, functions, 16, generator);
 
 		fv.update(cs, field);
 
@@ -241,7 +242,7 @@ int main() {
 
 		dt = clock.getElapsedTime().asSeconds();
 	} while (!quit);
-#else
+#elif defined (EXPERIMENT_ERL)
 	// ------------------------------------------- Testing -------------------------------------------
 
 	std::shared_ptr<neat::EvolverSettings> settings(new erl::Field2DEvolverSettings());
@@ -268,12 +269,12 @@ int main() {
 
 	erl::Field2DCL field;
 
-	float sizeScalar = 800.0f / 16.0f;
+	float sizeScalar = 600.0f / 32.0f;
 
-	field.create(genes, cs, 16, 16, 2, 4, 1, 3, 1, randomImage, blurProgram, blurKernelX, blurKernelY, functions, functionNames, -1.0f, 1.0f, generator, logger);
+	field.create(genes, cs, 32, 32, 2, 4, 1, 1, 1, randomImage, blurProgram, blurKernelX, blurKernelY, functions, functionNames, -1.0f, 1.0f, generator, logger);
 
 	sf::RenderWindow window;
-	window.create(sf::VideoMode(800, 600), "ERL Test", sf::Style::Default);
+	window.create(sf::VideoMode(1400, 600), "ERL Test", sf::Style::Default);
 
 	window.setVerticalSyncEnabled(true);
 
@@ -338,6 +339,10 @@ int main() {
 
 	std::uniform_real_distribution<float> dist01(0.0f, 1.0f);
 
+	erl::FieldVisualizer fv;
+
+	fv.create(cs, "adapter.cl", field, logger);
+
 	do {
 		clock.restart();
 
@@ -384,7 +389,7 @@ int main() {
 		field.setInput(2, std::fmodf(poleAngle + static_cast<float>(std::_Pi), 2.0f * static_cast<float>(std::_Pi)));
 		field.setInput(3, poleAngleVel);
 
-		field.update(error, cs, functions, 20, generator);
+		field.update(error, cs, functions, 16, generator);
 
 		float dir = std::min<float>(1.0f, std::max<float>(-1.0f, field.getOutput(0)));
 
@@ -448,7 +453,7 @@ int main() {
 
 		window.draw(backgroundSprite);
 
-		cartSprite.setPosition(sf::Vector2f(static_cast<float>(window.getSize().x) * 0.5f + pixelsPerMeter * cartX, static_cast<float>(window.getSize().y) * 0.5f + 3.0f));
+		cartSprite.setPosition(sf::Vector2f(static_cast<float>(800.0f) * 0.5f + pixelsPerMeter * cartX, static_cast<float>(600.0f) * 0.5f + 3.0f));
 
 		window.draw(cartSprite);
 
@@ -456,6 +461,29 @@ int main() {
 		poleSprite.setRotation(poleAngle * 180.0f / static_cast<float>(std::_Pi) + 180.0f);
 
 		window.draw(poleSprite);
+
+		// ------------------------
+
+		fv.update(cs, field);
+
+		sf::Image image;
+		image.create(fv.getSoftImage().getWidth(), fv.getSoftImage().getHeight());
+
+		for (int x = 0; x < image.getSize().x; x++)
+		for (int y = 0; y < image.getSize().y; y++) {
+			image.setPixel(x, y, fv.getSoftImage().getPixel(x, y));
+		}
+
+		sf::Texture texture;
+		texture.loadFromImage(image);
+
+		sf::Sprite sprite;
+		sprite.setTexture(texture);
+		sprite.setScale(sf::Vector2f(sizeScalar, sizeScalar));
+
+		sprite.setPosition(800.0f, 0.0f);
+
+		window.draw(sprite);
 
 		// -------------------------------------------------------------------
 

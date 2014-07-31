@@ -39,7 +39,7 @@ float ExperimentPoleBalancing::evaluate(erl::Field2DGenes &fieldGenes, const nea
 {
 	erl::Field2DCL field;
 
-	field.create(fieldGenes, cs, 16, 16, 2, 4, 1, 1, 1, randomImage, blurProgram, blurKernelX, blurKernelY, activationFunctions, activationFunctionNames, minInitRec, maxInitRec, generator, logger);
+	field.create(fieldGenes, cs, 32, 32, 2, 4, 1, 1, 1, randomImage, blurProgram, blurKernelX, blurKernelY, activationFunctions, activationFunctionNames, minInitRec, maxInitRec, generator, logger);
 
 	std::uniform_real_distribution<float> initPosDist(-1.0f, 1.0f);
 	std::uniform_real_distribution<float> initPoleVelDist(-0.05f, 0.05f);
@@ -69,7 +69,7 @@ float ExperimentPoleBalancing::evaluate(erl::Field2DGenes &fieldGenes, const nea
 
 	float totalFitness = 0.0f;
 
-	for (size_t i = 0; i < 500; i++) {
+	for (size_t i = 0; i < 600; i++) {
 		//std::cout << "Step " << i << std::endl;
 
 		// Update fitness
@@ -97,7 +97,7 @@ float ExperimentPoleBalancing::evaluate(erl::Field2DGenes &fieldGenes, const nea
 		field.setInput(2, std::fmodf(poleAngle + static_cast<float>(std::_Pi), 2.0f * static_cast<float>(std::_Pi)));
 		field.setInput(3, poleAngleVel);
 
-		field.update(error, cs, activationFunctions, 20, generator);
+		field.update(error, cs, activationFunctions, 16, generator);
 
 		float dir = std::min<float>(1.0f, std::max<float>(-1.0f, field.getOutput(0)));
 
