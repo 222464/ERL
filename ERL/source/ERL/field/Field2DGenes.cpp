@@ -4,16 +4,21 @@
 
 using namespace erl;
 
-void Field2DGenes::setInputOutputCounts(const Field2DEvolverSettings* pSettings, std::mt19937 &generator) {
-	_connectionUpdateGenotype.setNumInputsFeedForward(_nodeOutputSize + 6, pSettings->_minInitWeight, pSettings->_maxInitWeight, generator);
-	_connectionUpdateGenotype.setNumOutputsFeedForward(_connectionResponseSize, pSettings->_minInitWeight, pSettings->_maxInitWeight, generator);
+void Field2DGenes::setInputOutputCounts(const Field2DEvolverSettings* pSettings, const std::vector<float> &functionChances, std::mt19937 &generator) {
+	_connectionUpdateGenotype.setNumInputsFeedForward(_nodeOutputSize + 6, pSettings->_minInitWeight, pSettings->_maxInitWeight, functionChances, generator);
+	_connectionUpdateGenotype.setNumOutputsFeedForward(_connectionResponseSize, pSettings->_minInitWeight, pSettings->_maxInitWeight, functionChances, generator);
 
-	_activationUpdateGenotype.setNumInputsFeedForward(_connectionResponseSize + 3 + _numGases, pSettings->_minInitWeight, pSettings->_maxInitWeight, generator);
-	_activationUpdateGenotype.setNumOutputsFeedForward(_nodeOutputSize + _numGases, pSettings->_minInitWeight, pSettings->_maxInitWeight, generator);
+	_activationUpdateGenotype.setNumInputsFeedForward(_connectionResponseSize + 3 + _numGases, pSettings->_minInitWeight, pSettings->_maxInitWeight, functionChances, generator);
+	_activationUpdateGenotype.setNumOutputsFeedForward(_nodeOutputSize + _numGases, pSettings->_minInitWeight, pSettings->_maxInitWeight, functionChances, generator);
 
-	_encoderGenotype.setNumOutputsFeedForward(_connectionResponseSize, pSettings->_minInitWeight, pSettings->_maxInitWeight, generator);
+	_typeSetGenotype.setNumInputsFeedForward(2, pSettings->_minInitWeight, pSettings->_maxInitWeight, functionChances, generator);
+	_typeSetGenotype.setNumOutputsFeedForward(1, pSettings->_minInitWeight, pSettings->_maxInitWeight, functionChances, generator);
 
-	_decoderGenotype.setNumInputsFeedForward(_nodeOutputSize, pSettings->_minInitWeight, pSettings->_maxInitWeight, generator);
+	_encoderGenotype.setNumInputsFeedForward(1, pSettings->_minInitWeight, pSettings->_maxInitWeight, functionChances, generator);
+	_encoderGenotype.setNumOutputsFeedForward(_connectionResponseSize, pSettings->_minInitWeight, pSettings->_maxInitWeight, functionChances, generator);
+
+	_decoderGenotype.setNumInputsFeedForward(_nodeOutputSize, pSettings->_minInitWeight, pSettings->_maxInitWeight, functionChances, generator);
+	_decoderGenotype.setNumOutputsFeedForward(1, pSettings->_minInitWeight, pSettings->_maxInitWeight, functionChances, generator);
 }
 
 void Field2DGenes::initialize(const Field2DEvolverSettings* pSettings, const std::vector<float> &functionChances, std::mt19937 &generator) {
@@ -59,7 +64,7 @@ void Field2DGenes::crossover(const Field2DEvolverSettings* pSettings, const std:
 	_encoderGenotype.createFromParents(pParent1->_encoderGenotype, pParent2->_encoderGenotype, pSettings->_updateCrossoverAverageChance, generator);
 	_decoderGenotype.createFromParents(pParent1->_decoderGenotype, pParent2->_decoderGenotype, pSettings->_updateCrossoverAverageChance, generator);
 
-	setInputOutputCounts(pSettings, generator);
+	setInputOutputCounts(pSettings, functionChances, generator);
 
 	// ------------------------ Initializations ------------------------
 
@@ -136,7 +141,7 @@ void Field2DGenes::mutate(const Field2DEvolverSettings* pSettings, const std::ve
 		_nodeOutputStrengthScalar += nodeOutputStrengthPertDist(generator);
 	}
 
-	setInputOutputCounts(pSettings, generator);
+	setInputOutputCounts(pSettings, functionChances, generator);
 
 	// ------------------------ Initializations ------------------------
 

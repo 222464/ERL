@@ -27,7 +27,7 @@ misrepresented as being the original software.
 using namespace erl;
 
 EvolutionaryTrainer::EvolutionaryTrainer()
-: _runsPerExperiment(10),
+: _runsPerExperiment(1),
 _numElites(3),
 _greedExponent(2.0f)
 {}

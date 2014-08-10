@@ -120,12 +120,19 @@ void Genotype::addNode(float minWeight, float maxWeight, const std::vector<float
 
 	std::unordered_map<size_t, std::shared_ptr<Node>>::iterator it0 = _nodes.begin();
 
-	for (size_t i = 0; i < nodeIndex;)
-	if (it0->second->_connections.empty())
-		it0++;
-	else {
-		i++;
-		it0++;
+	size_t ni = 0;
+
+	while (true) {
+		while (it0->second->_connections.empty())
+			it0++;
+
+		if (ni < nodeIndex) {
+			it0++;
+
+			ni++;
+		}
+		else
+			break;
 	}
 
 	// Select random connection to split
@@ -179,22 +186,29 @@ void Genotype::addConnection(float minWeight, float maxWeight, std::mt19937 &gen
 		inputNodeIDSet.insert(_inputNodeIDs[i]);
 
 	for (std::unordered_map<size_t, std::shared_ptr<Node>>::const_iterator cit0 = _nodes.begin(); cit0 != _nodes.end(); cit0++)
-	if (inputNodeIDSet.find(cit0->first) == inputNodeIDSet.end() && cit0->second->_connections.size() < _nodes.size())
+	if (inputNodeIDSet.find(cit0->first) != inputNodeIDSet.end() || cit0->second->_connections.size() >= _nodes.size())
 		numFullyConnected++;
 
 	// Select random node that is not an input and isn't fully connected
-	std::uniform_int_distribution<int> nodeIndexDist(0, _nodes.size() - getNumInputs() - numFullyConnected - 1);
+	std::uniform_int_distribution<int> nodeIndexDist(0, _nodes.size() - numFullyConnected - 1);
 
 	size_t nodeIndex = nodeIndexDist(generator);
 
 	std::unordered_map<size_t, std::shared_ptr<Node>>::iterator it0 = _nodes.begin();
 
-	for (size_t i = 0; i < nodeIndex;)
-	if (inputNodeIDSet.find(it0->first) != inputNodeIDSet.end() || it0->second->_connections.size() >= _nodes.size())
-		it0++;
-	else {
-		i++;
-		it0++;
+	size_t ni = 0;
+
+	while (true) {
+		while (inputNodeIDSet.find(it0->first) != inputNodeIDSet.end() || it0->second->_connections.size() >= _nodes.size())
+			it0++;
+
+		if (ni < nodeIndex) {
+			it0++;
+
+			ni++;
+		}
+		else
+			break;
 	}
 
 	std::vector<size_t> connectionNodeIDs;
@@ -224,7 +238,7 @@ void Genotype::createFromParents(const Genotype &parent0, const Genotype &parent
 	for (std::unordered_map<size_t, std::shared_ptr<Node>>::const_iterator cit0 = parent0._nodes.begin(); cit0 != parent0._nodes.end(); cit0++)
 		parent0NodeIDs.push_back(cit0->first);
 
-	for (std::unordered_map<size_t, std::shared_ptr<Node>>::const_iterator cit1 = parent1._nodes.begin(); cit1 != parent0._nodes.end(); cit1++)
+	for (std::unordered_map<size_t, std::shared_ptr<Node>>::const_iterator cit1 = parent1._nodes.begin(); cit1 != parent1._nodes.end(); cit1++)
 		parent1NodeIDs.insert(cit1->first);
 
 	for (std::list<size_t>::iterator nIDIt0 = parent0NodeIDs.begin(); nIDIt0 != parent0NodeIDs.end();) {
@@ -235,7 +249,7 @@ void Genotype::createFromParents(const Genotype &parent0, const Genotype &parent
 			std::shared_ptr<Node> node1 = parent1._nodes.at(*nIDIt1);
 
 			// Merge these nodes
-			size_t ID = std::max(*nIDIt0, *nIDIt1);
+			size_t ID = *nIDIt0;
 
 			std::shared_ptr<Node> child = std::make_shared<Node>();
 
@@ -251,22 +265,18 @@ void Genotype::createFromParents(const Genotype &parent0, const Genotype &parent
 
 					child->_connections[cit0->first] = weight;
 				}
-				else {
-					// This is a disjoint connection, add randomly
-					if (dist01(generator) < 0.5f)
-						child->_connections[cit0->first] = cit0->second;
-				}
+				else
+					// This is a disjoint connection, add
+					child->_connections[cit0->first] = cit0->second;
 			}
 
 			// Randomly add disjoint from other side as well
 			for (std::unordered_map<size_t, float>::const_iterator cit1 = node1->_connections.begin(); cit1 != node1->_connections.end(); cit1++) {
 				std::unordered_map<size_t, float>::const_iterator cit0 = node0->_connections.find(cit1->first);
 
-				if (cit0 == node0->_connections.end()) {
-					// This is a disjoint connection, add randomly
-					if (dist01(generator) < 0.5f)
-						child->_connections[cit1->first] = cit1->second;
-				}
+				// This is a disjoint connection, add
+				if (cit0 == node0->_connections.end())
+					child->_connections[cit1->first] = cit1->second;
 			}
 
 			_nodes[ID] = child;
@@ -279,18 +289,19 @@ void Genotype::createFromParents(const Genotype &parent0, const Genotype &parent
 			nIDIt0++;
 	}
 
-	// Check if there are leftover nodes. If there are, add a random number of them to the genotype.
-	for (std::list<size_t>::iterator it = parent0NodeIDs.begin(); it != parent0NodeIDs.end(); it++) {
-		if (dist01(generator) < 0.5f)
-			_nodes[*it] = parent0._nodes.at(*it);
-	}
+	// Check if there are leftover nodes. If there are, add them all
+	for (std::list<size_t>::iterator it = parent0NodeIDs.begin(); it != parent0NodeIDs.end(); it++)
+		_nodes[*it] = parent0._nodes.at(*it);
 
-	for (std::unordered_set<size_t>::iterator it = parent1NodeIDs.begin(); it != parent1NodeIDs.end(); it++) {
-		if (dist01(generator) < 0.5f)
-			_nodes[*it] = parent1._nodes.at(*it);
-	}
+	for (std::unordered_set<size_t>::iterator it = parent1NodeIDs.begin(); it != parent1NodeIDs.end(); it++)
+		_nodes[*it] = parent1._nodes.at(*it);
 
 	_nextNodeID = std::max(parent0._nextNodeID, parent1._nextNodeID);
+
+	// Calculate outgoing connections
+	for (std::unordered_map<size_t, std::shared_ptr<Node>>::iterator it0 = _nodes.begin(); it0 != _nodes.end(); it0++)
+	for (std::unordered_map<size_t, float>::iterator it1 = it0->second->_connections.begin(); it1 != it0->second->_connections.end(); it1++)
+		_nodes[it1->first]->_outputNodes.insert(it0->first);
 }
 
 void Genotype::mutate(float addNodeChance, float addConnectionChance, float minWeight, float maxWeight, float perturbationChance, float maxPerturbation, float changeFunctionChance, const std::vector<float> &functionChances, std::mt19937 &generator) {
@@ -337,7 +348,7 @@ void Genotype::removeOutput(size_t index) {
 	_outputNodeIDs.erase(_outputNodeIDs.begin() + index);
 }
 
-void Genotype::addInputFeedForward(float minWeight, float maxWeight, std::mt19937 &generator) {
+void Genotype::addInputFeedForward(float minWeight, float maxWeight, const std::vector<float> &functionChances, std::mt19937 &generator) {
 	// Add a node for this input and fully connect to outputs
 	std::uniform_real_distribution<float> weightDist(minWeight, maxWeight);
 
@@ -345,6 +356,9 @@ void Genotype::addInputFeedForward(float minWeight, float maxWeight, std::mt1993
 	_nextNodeID++;
 
 	std::shared_ptr<Node> newNode = std::make_shared<Node>();
+
+	newNode->_bias = weightDist(generator);
+	newNode->_functionIndex = roulette(functionChances, generator);
 
 	for (size_t i = 0; i < _outputNodeIDs.size(); i++) {
 		std::shared_ptr<Node> outputNode = _nodes[_outputNodeIDs[i]];
@@ -359,7 +373,7 @@ void Genotype::addInputFeedForward(float minWeight, float maxWeight, std::mt1993
 	_inputNodeIDs.push_back(newNodeID);
 }
 
-void Genotype::addOutputFeedForward(float minWeight, float maxWeight, std::mt19937 &generator) {
+void Genotype::addOutputFeedForward(float minWeight, float maxWeight, const std::vector<float> &functionChances, std::mt19937 &generator) {
 	// Add a node for this output and fully connect to inputs
 	std::uniform_real_distribution<float> weightDist(minWeight, maxWeight);
 
@@ -367,6 +381,9 @@ void Genotype::addOutputFeedForward(float minWeight, float maxWeight, std::mt199
 	_nextNodeID++;
 
 	std::shared_ptr<Node> newNode = std::make_shared<Node>();
+
+	newNode->_bias = weightDist(generator);
+	newNode->_functionIndex = roulette(functionChances, generator);
 
 	for (size_t i = 0; i < _inputNodeIDs.size(); i++) {
 		std::shared_ptr<Node> inputNode = _nodes[_inputNodeIDs[i]];
@@ -381,7 +398,7 @@ void Genotype::addOutputFeedForward(float minWeight, float maxWeight, std::mt199
 	_outputNodeIDs.push_back(newNodeID);
 }
 
-void Genotype::setNumInputsFeedForward(size_t numInputs, float minWeight, float maxWeight, std::mt19937 &generator, RemoveMethod removalMethod) {
+void Genotype::setNumInputsFeedForward(size_t numInputs, float minWeight, float maxWeight, const std::vector<float> &functionChances, std::mt19937 &generator, RemoveMethod removalMethod) {
 	switch (removalMethod) {
 	case _random:
 		while (numInputs < getNumInputs()) {
@@ -400,10 +417,10 @@ void Genotype::setNumInputsFeedForward(size_t numInputs, float minWeight, float 
 	}
 
 	while (numInputs > getNumInputs())
-		addInputFeedForward(minWeight, maxWeight, generator);
+		addInputFeedForward(minWeight, maxWeight, functionChances, generator);
 }
 
-void Genotype::setNumOutputsFeedForward(size_t numOutputs, float minWeight, float maxWeight, std::mt19937 &generator, RemoveMethod removalMethod) {
+void Genotype::setNumOutputsFeedForward(size_t numOutputs, float minWeight, float maxWeight, const std::vector<float> &functionChances, std::mt19937 &generator, RemoveMethod removalMethod) {
 	switch (removalMethod) {
 	case _random:
 		while (numOutputs < getNumOutputs()) {
@@ -424,7 +441,7 @@ void Genotype::setNumOutputsFeedForward(size_t numOutputs, float minWeight, floa
 	}
 
 	while (numOutputs > getNumOutputs())
-		addOutputFeedForward(minWeight, maxWeight, generator);
+		addOutputFeedForward(minWeight, maxWeight, functionChances, generator);
 }
 
 void Genotype::readFromStream(std::istream &is) {

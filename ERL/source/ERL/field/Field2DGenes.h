@@ -29,7 +29,7 @@ namespace erl {
 		std::vector<std::tuple<float, float>> _recurrentNodeInitBounds;
 		std::vector<std::tuple<float, float>> _recurrentConnectionInitBounds;
 
-		void setInputOutputCounts(const Field2DEvolverSettings* pSettings, std::mt19937 &generator);
+		void setInputOutputCounts(const Field2DEvolverSettings* pSettings, const std::vector<float> &functionChances, std::mt19937 &generator);
 
 	public:
 		void initialize(const Field2DEvolverSettings* pSettings, const std::vector<float> &functionChances, std::mt19937 &generator);

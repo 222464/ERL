@@ -109,7 +109,7 @@ int main() {
 
 	erl::EvolutionaryTrainer trainer;
 
-	trainer.create(20, settings.get(), functionChances, randomImage, blurProgram, blurKernelX, blurKernelY, functions, functionNames, -1.0f, 1.0f, generator);
+	trainer.create(5, settings.get(), functionChances, randomImage, blurProgram, blurKernelX, blurKernelY, functions, functionNames, -1.0f, 1.0f, generator);
 
 	trainer.addExperiment(std::shared_ptr<erl::Experiment>(new ExperimentPoleBalancing()));
 	//trainer.addExperiment(std::shared_ptr<erl::Experiment>(new ExperimentOR()));

@@ -81,11 +81,11 @@ namespace ne {
 		void removeInput(size_t index);
 		void removeOutput(size_t index);
 
-		void addInputFeedForward(float minWeight, float maxWeight, std::mt19937 &generator);
-		void addOutputFeedForward(float minWeight, float maxWeight, std::mt19937 &generator);
+		void addInputFeedForward(float minWeight, float maxWeight, const std::vector<float> &functionChances, std::mt19937 &generator);
+		void addOutputFeedForward(float minWeight, float maxWeight, const std::vector<float> &functionChances, std::mt19937 &generator);
 
-		void setNumInputsFeedForward(size_t numInputs, float minWeight, float maxWeight, std::mt19937 &generator, RemoveMethod removalMethod = _last);
-		void setNumOutputsFeedForward(size_t numOutputs, float minWeight, float maxWeight, std::mt19937 &generator, RemoveMethod removalMethod = _last);
+		void setNumInputsFeedForward(size_t numInputs, float minWeight, float maxWeight, const std::vector<float> &functionChances, std::mt19937 &generator, RemoveMethod removalMethod = _last);
+		void setNumOutputsFeedForward(size_t numOutputs, float minWeight, float maxWeight, const std::vector<float> &functionChances, std::mt19937 &generator, RemoveMethod removalMethod = _last);
 
 		void readFromStream(std::istream &is);
 		void writeToStream(std::ostream &os) const;
