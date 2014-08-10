@@ -11,6 +11,10 @@ namespace ne {
 
 	class Genotype {
 	public:
+		enum RemoveMethod {
+			_random, _last
+		};
+
 		enum NodeType {
 			_input, _output, _inputOutput, _hidden
 		};
@@ -43,7 +47,7 @@ namespace ne {
 			std::unordered_set<size_t> _outputNodes;
 		};
 
-		static float getDifference(const Genotype &genotype0, const Genotype &genotype1, size_t node0ID, size_t node1ID, size_t searchDepth, float importanceDecay, float weightFactor, float disjointFactor, const std::unordered_map<FunctionPair, float, FunctionPair> &functionFactors);
+		static float getDifference(const Genotype &genotype0, const Genotype &genotype1, size_t node0ID, size_t node1ID, int searchDepth, float importanceDecay, float weightFactor, float disjointFactor, const std::unordered_map<FunctionPair, float, FunctionPair> &functionFactors, std::unordered_set<size_t> &visitedNodeIDs);
 
 	private:
 		std::unordered_map<size_t, std::shared_ptr<Node>> _nodes; // NodeID to node
@@ -61,9 +65,11 @@ namespace ne {
 		{}
 
 		void createRandomFeedForward(size_t numInputs, size_t numOutputs, float minWeight, float maxWeight, const std::vector<float> &functionChances, std::mt19937 &generator);
-		void createFromParents(const Genotype &parent0, const Genotype &parent1, size_t searchDepth, float importanceDecay, float weightFactor, float disjointFactor, const std::unordered_map<FunctionPair, float, FunctionPair> &functionFactors, float averageChance, std::mt19937 &generator);
-		void mutate(float addNodeChance, float addConnectionChance, float minWeight, float maxWeight, float perturbationChance, float maxPerturbation, float chanceFunctionChance, const std::vector<float> &functionChances, std::mt19937 &generator);
+		void createFromParents(const Genotype &parent0, const Genotype &parent1, float averageChance, std::mt19937 &generator);
+		void mutate(float addNodeChance, float addConnectionChance, float minWeight, float maxWeight, float perturbationChance, float maxPerturbation, float changeFunctionChance, const std::vector<float> &functionChances, std::mt19937 &generator);
 	
+		static float getDifference(const Genotype &genotype0, const Genotype &genotype1, float weightFactor, float disjointFactor, const std::unordered_map<FunctionPair, float, FunctionPair> &functionFactors);
+
 		size_t getNumInputs() const {
 			return _inputNodeIDs.size();
 		}
@@ -77,6 +83,12 @@ namespace ne {
 
 		void addInputFeedForward(float minWeight, float maxWeight, std::mt19937 &generator);
 		void addOutputFeedForward(float minWeight, float maxWeight, std::mt19937 &generator);
+
+		void setNumInputsFeedForward(size_t numInputs, float minWeight, float maxWeight, std::mt19937 &generator, RemoveMethod removalMethod = _last);
+		void setNumOutputsFeedForward(size_t numOutputs, float minWeight, float maxWeight, std::mt19937 &generator, RemoveMethod removalMethod = _last);
+
+		void readFromStream(std::istream &is);
+		void writeToStream(std::ostream &os) const;
 
 		friend class Phenotype;
 	};

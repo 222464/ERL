@@ -48,15 +48,17 @@ void Phenotype::createFromGenotype(const Genotype &genotype) {
 
 			Connection c;
 
-			std::unordered_map<size_t, size_t>::const_iterator cit2 = inputNodeIDToInputIndex.find(currentNodeID);
+			std::unordered_map<size_t, size_t>::const_iterator cit2 = inputNodeIDToInputIndex.find(cit0->first);
 
 			if (cit2 == inputNodeIDToInputIndex.end()) {
-				if (cit1 == nodeIDToIndex.end())
+				if (cit1 == nodeIDToIndex.end()) {
 					c._fetchType = _intermediate;
-				else
+					c._fetchIndex = cit0->first; // Set to ID for now, will be mapped to an index later (when all nodes have been explored)
+				}
+				else {
 					c._fetchType = _recurrent;
-
-				c._fetchIndex = cit1->second;
+					c._fetchIndex = cit1->second;
+				}
 			}
 			else {
 				c._fetchType = _input;
@@ -68,22 +70,27 @@ void Phenotype::createFromGenotype(const Genotype &genotype) {
 
 			newNode->_connections.push_back(c);
 
-			if (cit1 == nodeIDToIndex.end()) {
-				// Visit this node
-				openNodeIDs.push_back(cit0->first);
+			if (c._fetchType != _input) {
+				if (cit1 == nodeIDToIndex.end()) {
+					// Visit this node
+					openNodeIDs.push_back(cit0->first);
+				}
+				else { // Add as recurrent source node
+					std::unordered_set<size_t>::const_iterator cit3 = recurrentNodeIndicesSet.find(cit1->first);
 
-				nodeIDToIndex[cit0->first] = _nodes.size();
-			}
-			else { // Add as recurrent source node
-				std::unordered_set<size_t>::const_iterator cit3 = recurrentNodeIndicesSet.find(cit1->first);
-
-				if (cit3 == recurrentNodeIndicesSet.end()) {
-					recurrentNodeIndicesSet.insert(cit1->first);
-					_recurrentNodeIndices.push_back(cit1->first);
+					if (cit3 == recurrentNodeIndicesSet.end()) {
+						recurrentNodeIndicesSet.insert(cit1->first);
+						_recurrentNodeIndices.push_back(cit1->first);
+					}
 				}
 			}
 		}
 	}
+
+	for (size_t i = 0; i < _nodes.size(); i++)
+	for (size_t j = 0; j < _nodes[i]->_connections.size(); j++)
+	if (_nodes[i]->_connections[j]._fetchType == _intermediate)
+		_nodes[i]->_connections[j]._fetchIndex = nodeIDToIndex[_nodes[i]->_connections[j]._fetchIndex];
 
 	// Flip nodes around
 	std::reverse(_nodes.begin(), _nodes.end());
@@ -91,14 +98,14 @@ void Phenotype::createFromGenotype(const Genotype &genotype) {
 	// Convert node IDs in the phenotype to true node indices using conversion map. Take flipped node order into account. Do not change if it is an input connection
 	for (size_t ni = 0; ni < _nodes.size(); ni++)
 	for (size_t ci = 0; ci < _nodes[ni]->_connections.size(); ci++)
-	switch (_nodes[ni]->_connections[ci]._fetchType != _input) // If is input connection
-		_nodes[ni]->_connections[ci]._fetchIndex = _nodes.size() - nodeIDToIndex[_nodes[ni]->_connections[ci]._fetchIndex] - 1;
+	if (_nodes[ni]->_connections[ci]._fetchType != _input) // If is input connection
+		_nodes[ni]->_connections[ci]._fetchIndex = _nodes.size() - _nodes[ni]->_connections[ci]._fetchIndex - 1;
 
 	for (size_t i = 0; i < _recurrentNodeIndices.size(); i++)
-		_recurrentNodeIndices[i] = _nodes.size() - nodeIDToIndex[_recurrentNodeIndices[i]] - 1;
+		_recurrentNodeIndices[i] = _nodes.size() - _recurrentNodeIndices[i] - 1;
 }
 
-void Phenotype::execute(const std::vector<float> &inputs, std::vector<float> &outputs, std::vector<float> &recurrentData, std::vector<std::function<float(float)>> &functions) {
+void Phenotype::execute(const std::vector<float> &inputs, std::vector<float> &outputs, std::vector<float> &recurrentData, const std::vector<std::function<float(float)>> &functions) {
 	assert(inputs.size() == _numInputs);
 	assert(outputs.size() == _numOutputs);
 

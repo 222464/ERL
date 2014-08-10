@@ -51,20 +51,15 @@ void Field2DCL::create(Field2DGenes &genes, ComputeSystem &cs, int width, int he
 	_numOutputsPerBlob = (outputRange + 1) * (outputRange + 1);
 
 	// Create phenotypes for rules
-	_connectionPhenotype.create(genes.getConnectionUpdateGenotype());
+	_connectionPhenotype.createFromGenotype(genes.getConnectionUpdateGenotype());
 
-	_nodePhenotype.create(genes.getActivationUpdateGenotype());
-
-	// Get rule data
-	_connectionPhenotype.getConnectionData(_connectionData);
-
-	_nodePhenotype.getConnectionData(_nodeData);
+	_nodePhenotype.createFromGenotype(genes.getActivationUpdateGenotype());
 
 	_connectionDimensionSize = 2 * _connectionRadius + 1;
 	_numConnections = _connectionDimensionSize * _connectionDimensionSize;
 
-	_nodeSize = genes.getNodeOutputSize() + 1 + _nodeData._numRecurrentSourceNodes; // + 1 for type
-	_connectionSize = _connectionData._numRecurrentSourceNodes;
+	_nodeSize = genes.getNodeOutputSize() + 1 + _nodePhenotype.getRecurrentDataSize(); // + 1 for type
+	_connectionSize = _connectionPhenotype.getRecurrentDataSize();
 	_nodeAndConnectionsSize = _nodeSize + _connectionSize * _numConnections;
 
 	_numNodes = _width * _height;
@@ -74,9 +69,9 @@ void Field2DCL::create(Field2DGenes &genes, ComputeSystem &cs, int width, int he
 	std::vector<float> buffer(_bufferSize);
 
 	// Type phenotype
-	neat::NetworkPhenotype typePhenotype;
+	ne::Phenotype typePhenotype;
 
-	typePhenotype.create(genes.getTypeSetGenotype());
+	typePhenotype.createFromGenotype(genes.getTypeSetGenotype());
 
 	// Create buffer
 	int bufferIndex = 0;
@@ -86,10 +81,8 @@ void Field2DCL::create(Field2DGenes &genes, ComputeSystem &cs, int width, int he
 
 	std::uniform_real_distribution<float> distRecInit(minRecInit, maxRecInit);
 
-	int halfNumNodeRecurrentSources = std::ceil(_nodeData._numRecurrentSourceNodes * 0.5f);
-
 	// Resize init buffers if necessary (add entries)
-	while (genes._recurrentNodeInitBounds.size() < _nodeData._numRecurrentSourceNodes) {
+	while (genes._recurrentNodeInitBounds.size() < _nodePhenotype.getRecurrentDataSize()) {
 		std::tuple<float, float> newBounds = std::make_tuple<float, float>(distRecInit(generator), distRecInit(generator));
 
 		if (std::get<0>(newBounds) > std::get<1>(newBounds))
@@ -98,7 +91,7 @@ void Field2DCL::create(Field2DGenes &genes, ComputeSystem &cs, int width, int he
 		genes._recurrentNodeInitBounds.push_back(newBounds);
 	}
 
-	while (genes._recurrentConnectionInitBounds.size() < _connectionData._numRecurrentSourceNodes) {
+	while (genes._recurrentConnectionInitBounds.size() < _connectionPhenotype.getRecurrentDataSize()) {
 		std::tuple<float, float> newBounds = std::make_tuple<float, float>(distRecInit(generator), distRecInit(generator));
 
 		if (std::get<0>(newBounds) > std::get<1>(newBounds))
@@ -106,6 +99,8 @@ void Field2DCL::create(Field2DGenes &genes, ComputeSystem &cs, int width, int he
 
 		genes._recurrentConnectionInitBounds.push_back(newBounds);
 	}
+
+	std::vector<float> typeSetRecurrentData(typePhenotype.getRecurrentDataSize(), 0.0f);
 
 	for (int ni = 0; ni < _numNodes; ni++) {
 		int x = ni % _width;
@@ -117,15 +112,18 @@ void Field2DCL::create(Field2DGenes &genes, ComputeSystem &cs, int width, int he
 		for (int oi = 0; oi < genes.getNodeOutputSize(); oi++)
 			buffer[bufferIndex++] = 0.0f;
 
-		typePhenotype.getInput(0)._output = xCoord;
-		typePhenotype.getInput(1)._output = yCoord;
+		std::vector<float> inputs(2);
+		std::vector<float> outputs(1);
 
-		typePhenotype.update(activationFunctions);
+		inputs[0] = xCoord;
+		inputs[1] = yCoord;
+		
+		typePhenotype.execute(inputs, outputs, typeSetRecurrentData, activationFunctions);
 
-		buffer[bufferIndex++] = typePhenotype.getOutput(0)._output;
+		buffer[bufferIndex++] = outputs[0];
 
 		// Initialize recurrent data
-		for (int ri = 0; ri < _nodeData._numRecurrentSourceNodes; ri++) {
+		for (int ri = 0; ri < _nodePhenotype.getRecurrentDataSize(); ri++) {
 			std::uniform_real_distribution<float> distInit(std::get<0>(genes._recurrentNodeInitBounds[ri]), std::get<1>(genes._recurrentNodeInitBounds[ri]));
 			buffer[bufferIndex++] = distInit(generator);
 		}
@@ -133,7 +131,7 @@ void Field2DCL::create(Field2DGenes &genes, ComputeSystem &cs, int width, int he
 		// Connections
 		for (int ci = 0; ci < _numConnections; ci++) {
 			// Initialize recurrent data
-			for (int ri = 0; ri < _connectionData._numRecurrentSourceNodes; ri++) {
+			for (int ri = 0; ri < _connectionPhenotype.getRecurrentDataSize(); ri++) {
 				std::uniform_real_distribution<float> distInit(std::get<0>(genes._recurrentConnectionInitBounds[ri]), std::get<1>(genes._recurrentConnectionInitBounds[ri]));
 				buffer[bufferIndex++] = distInit(generator);
 			}
@@ -225,7 +223,7 @@ void Field2DCL::create(Field2DGenes &genes, ComputeSystem &cs, int width, int he
 
 	_outputImage = cl::Image1D(cs.getContext(), CL_MEM_WRITE_ONLY | CL_MEM_COPY_HOST_PTR, cl::ImageFormat(CL_R, CL_FLOAT), outputBuffer.size(), &outputBuffer[0]);
 
-	_program = cl::Program(cs.getContext(), field2DGenesNodeUpdateToCL(genes, *this, _connectionPhenotype, _nodePhenotype, _connectionData, _nodeData, activationFunctionNames, _width, _height, _connectionRadius, numInputs, numOutputs));
+	_program = cl::Program(cs.getContext(), field2DGenesNodeUpdateToCL(genes, *this, _connectionPhenotype, _nodePhenotype, activationFunctionNames, _width, _height, _connectionRadius, numInputs, numOutputs));
 
 	if (_program.build(std::vector<cl::Device>(1, cs.getDevice())) != CL_SUCCESS) {
 		logger << "Error building: " << _program.getBuildInfo<CL_PROGRAM_BUILD_LOG>(cs.getDevice()) << erl::endl;
@@ -238,12 +236,20 @@ void Field2DCL::create(Field2DGenes &genes, ComputeSystem &cs, int width, int he
 
 	_encoderPhenotypes.resize(numInputs);
 	_decoderPhenotypes.resize(numOutputs);
+	_encoderRecurrentData.resize(numInputs);
+	_decoderRecurrentData.resize(numOutputs);
 
-	for (int i = 0; i < numInputs; i++)
-		_encoderPhenotypes[i].create(genes.getEncoderGenotype());
+	for (int i = 0; i < numInputs; i++) {
+		_encoderPhenotypes[i].createFromGenotype(genes.getEncoderGenotype());
 
-	for (int i = 0; i < numOutputs; i++)
-		_decoderPhenotypes[i].create(genes.getDecoderGenotype());
+		_encoderRecurrentData[i].assign(_encoderPhenotypes[i].getRecurrentDataSize(), 0.0f);
+	}
+
+	for (int i = 0; i < numOutputs; i++) {
+		_decoderPhenotypes[i].createFromGenotype(genes.getDecoderGenotype());
+
+		_decoderRecurrentData[i].assign(_decoderPhenotypes[i].getRecurrentDataSize(), 0.0f);
+	}
 }
 
 void Field2DCL::update(float reward, ComputeSystem &cs, const std::vector<std::function<float(float)>> &activationFunctions, int substeps, std::mt19937 &generator) {
@@ -252,16 +258,16 @@ void Field2DCL::update(float reward, ComputeSystem &cs, const std::vector<std::f
 
 	// Create input image
 	std::vector<float> inputBuffer(getNumInputs() * _connectionResponseSize);
-
+	
 	int inputBufferIndex = 0;
 
 	for (int i = 0; i < getNumInputs(); i++) {
-		_encoderPhenotypes[i].getInput(0)._output = _inputs[i];
+		std::vector<float> outputBuffer(_encoderPhenotypes[i].getNumOutputs(), 0.0f);
 
-		_encoderPhenotypes[i].update(activationFunctions);
+		_encoderPhenotypes[i].execute(std::vector<float>(1, _inputs[i]), outputBuffer, _encoderRecurrentData[i], activationFunctions);
 
 		for (int j = 0; j < _connectionResponseSize; j++)
-			inputBuffer[inputBufferIndex++] = _encoderPhenotypes[i].getOutput(j)._output * _inputStrengthScalar;
+			inputBuffer[inputBufferIndex++] = outputBuffer[j] * _inputStrengthScalar;
 	}
 
 	_inputImage = cl::Image1D(cs.getContext(), CL_MEM_READ_ONLY | CL_MEM_COPY_HOST_PTR, cl::ImageFormat(CL_R, CL_FLOAT), inputBuffer.size(), &inputBuffer[0]);
@@ -329,12 +335,11 @@ void Field2DCL::update(float reward, ComputeSystem &cs, const std::vector<std::f
 		for (int k = 0; k < _nodeOutputSize; k++)
 			decoderInputs[k] *= numOutputsPerBlobInv;
 
-		for (int j = 0; j < _nodeOutputSize; j++)
-			_decoderPhenotypes[i].getInput(j)._output = decoderInputs[j];
+		std::vector<float> outputBuffer(1, 0.0f);
 
-		_decoderPhenotypes[i].update(activationFunctions);
+		_decoderPhenotypes[i].execute(decoderInputs, outputBuffer, _decoderRecurrentData[i], activationFunctions);
 
-		_outputs[i] = _decoderPhenotypes[i].getOutput(0)._output;
+		_outputs[i] = outputBuffer[0];
 	}
 
 	// Blur gas

@@ -3,7 +3,17 @@
 using namespace erl;
 
 Field2DEvolverSettings::Field2DEvolverSettings()
-: _addConnectionResponseChance(0.04f),
+: _minInitWeight(-1.0f),
+_maxInitWeight(1.0f),
+_updateCrossoverAverageChance(0.1f),
+_neAddNodeChance(0.05f),
+_neAddConnectionChance(0.05f),
+_neWeightPerturbationChance(0.1f),
+_neMaxWeightPerturbation(0.4f),
+_neChangeFunctionChance(0.04f),
+_neWeightFactor(0.5f),
+_neDisjointFactor(1.0f),
+_addConnectionResponseChance(0.04f),
 _addNodeOutputChance(0.04f),
 _addGasChance(0.02f),
 _connectionReponseDifferenceFactor(5.0f),

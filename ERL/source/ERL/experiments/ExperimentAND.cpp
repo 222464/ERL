@@ -28,7 +28,7 @@
 
 #include <iostream>
 
-float ExperimentAND::evaluate(erl::Field2DGenes &fieldGenes, const neat::EvolverSettings &settings,
+float ExperimentAND::evaluate(erl::Field2DGenes &fieldGenes, const erl::Field2DEvolverSettings* pSettings,
 	const std::shared_ptr<cl::Image2D> &randomImage,
 	const std::shared_ptr<cl::Program> &blurProgram,
 	const std::shared_ptr<cl::Kernel> &blurKernelX,

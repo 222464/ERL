@@ -9,7 +9,7 @@ Field2D
 #include <erl/platform/ComputeSystem.h>
 #include <erl/field/Field2DGenes.h>
 #include <erl/platform/SoftwareImage2D.h>
-#include <neat/NetworkPhenotype.h>
+#include <ne/Phenotype.h>
 #include <array>
 
 namespace erl {
@@ -48,11 +48,8 @@ namespace erl {
 
 		std::shared_ptr<cl::Image2D> _randomImage;
 
-		neat::NetworkPhenotype _connectionPhenotype;
-		neat::NetworkPhenotype _nodePhenotype;
-
-		neat::NetworkPhenotype::RuleData _connectionData;
-		neat::NetworkPhenotype::RuleData _nodeData;
+		ne::Phenotype _connectionPhenotype;
+		ne::Phenotype _nodePhenotype;
 
 		int _connectionResponseSize;
 		int _nodeOutputSize;
@@ -79,8 +76,10 @@ namespace erl {
 		std::vector<float> _inputs;
 		std::vector<float> _outputs;
 
-		std::vector<neat::NetworkPhenotype> _encoderPhenotypes;
-		std::vector<neat::NetworkPhenotype> _decoderPhenotypes;
+		std::vector<ne::Phenotype> _encoderPhenotypes;
+		std::vector<ne::Phenotype> _decoderPhenotypes;
+		std::vector<std::vector<float>> _encoderRecurrentData;
+		std::vector<std::vector<float>> _decoderRecurrentData;
 
 	public:
 		int _numGasBlurPasses;
@@ -98,14 +97,6 @@ namespace erl {
 			Logger &logger);
 
 		void update(float reward, ComputeSystem &cs, const std::vector<std::function<float(float)>> &activationFunctions, int substeps, std::mt19937 &generator);
-
-		const neat::NetworkPhenotype::RuleData &getConnectionData() const {
-			return _connectionData;
-		}
-
-		const neat::NetworkPhenotype::RuleData &getNodeData() const {
-			return _nodeData;
-		}
 
 		int getConnectionResponseSize() const {
 			return _connectionResponseSize;

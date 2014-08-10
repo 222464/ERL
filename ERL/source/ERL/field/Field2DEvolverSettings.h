@@ -4,11 +4,23 @@ ERL
 Field2DEvolverSettings
 */
 
-#include <neat/Evolver.h>
+#pragma once
 
 namespace erl {
-	class Field2DEvolverSettings : public neat::EvolverSettings {
+	class Field2DEvolverSettings {
 	public:
+		float _minInitWeight;
+		float _maxInitWeight;
+		float _updateCrossoverAverageChance;
+		float _neAddNodeChance;
+		float _neAddConnectionChance;
+		float _neWeightPerturbationChance;
+		float _neMaxWeightPerturbation;
+		float _neChangeFunctionChance;
+
+		float _neWeightFactor;
+		float _neDisjointFactor;
+
 		// For expanding node output and connection output sizes over time
 		float _addConnectionResponseChance;
 		float _addNodeOutputChance;

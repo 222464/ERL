@@ -1,37 +1,18 @@
 /*
-	AI Lib
-	Copyright (C) 2014 Eric Laukien
+ERL
 
-	This software is provided 'as-is', without any express or implied
-	warranty.  In no event will the authors be held liable for any damages
-	arising from the use of this software.
-
-	Permission is granted to anyone to use this software for any purpose,
-	including commercial applications, and to alter it and redistribute it
-	freely, subject to the following restrictions:
-
-	1. The origin of this software must not be misrepresented; you must not
-	claim that you wrote the original software. If you use this software
-	in a product, an acknowledgment in the product documentation would be
-	appreciated but is not required.
-	2. Altered source versions must be plainly marked as such, and must not be
-	misrepresented as being the original software.
-	3. This notice may not be removed or altered from any source distribution.
-
-	This version as been modified from the original.
+Evolutionary trainer
 */
 
 #pragma once
 
-#include <neat/Evolver.h>
+#include <erl/field/Field2DEvolver.h>
 #include <erl/simulation/Experiment.h>
 
 namespace erl {
 	class EvolutionaryTrainer {
 	private:
 		std::vector<std::shared_ptr<Experiment>> _experiments;
-
-		std::shared_ptr<neat::EvolverSettings> _settings;
 
 		std::shared_ptr<cl::Image2D> _randomImage;
 		std::shared_ptr<cl::Program> _blurProgram;
@@ -43,14 +24,18 @@ namespace erl {
 		float _minInitRec, _maxInitRec;
 
 	public:
-		neat::Evolver _evolutionaryAlgorithm;
+		Field2DEvolver _evolutionaryAlgorithm;
 
 		size_t _runsPerExperiment;
 
+		size_t _numElites;
+		float _greedExponent;
+
 		EvolutionaryTrainer();
 
-		void create(const std::vector<float> &functionChances,
-			const std::shared_ptr<neat::EvolverSettings> &settings,
+		void create(size_t populationSize,
+			const Field2DEvolverSettings* pSettings,
+			const std::vector<float> &functionChances,
 			const std::shared_ptr<cl::Image2D> &randomImage,
 			const std::shared_ptr<cl::Program> &blurProgram,
 			const std::shared_ptr<cl::Kernel> &blurKernelX,
@@ -60,8 +45,12 @@ namespace erl {
 			float minInitRec, float maxInitRec,
 			std::mt19937 &generator);
 
-		void evaluate(ComputeSystem &cs, Logger &logger, std::mt19937 &generator);
-		void reproduce(std::mt19937 &generator);
+		void evaluate(const Field2DEvolverSettings* pSettings,
+			const std::vector<float> &functionChances, 
+			ComputeSystem &cs, Logger &logger, std::mt19937 &generator);
+
+		void reproduce(const Field2DEvolverSettings* pSettings,
+			const std::vector<float> &functionChances, std::mt19937 &generator);
 
 		void writeBestToStream(std::ostream &os) const;
 

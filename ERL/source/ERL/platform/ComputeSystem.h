@@ -7,7 +7,7 @@ Platform
 #pragma once
 
 #include <erl/platform/Logger.h>
-#include <neat/Uncopyable.h>
+#include <erl/Uncopyable.h>
 #include <CL/cl.hpp>
 
 namespace erl {

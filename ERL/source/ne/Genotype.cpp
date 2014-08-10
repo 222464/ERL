@@ -25,7 +25,7 @@ size_t ne::roulette(const std::vector<float> &chances, std::mt19937 &generator) 
 	return 0;
 }
 
-float Genotype::getDifference(const Genotype &genotype0, const Genotype &genotype1, size_t node0ID, size_t node1ID, size_t searchDepth, float importanceDecay, float weightFactor, float disjointFactor, const std::unordered_map<FunctionPair, float, FunctionPair> &functionFactors) {
+float Genotype::getDifference(const Genotype &genotype0, const Genotype &genotype1, size_t node0ID, size_t node1ID, int searchDepth, float importanceDecay, float weightFactor, float disjointFactor, const std::unordered_map<FunctionPair, float, FunctionPair> &functionFactors, std::unordered_set<size_t> &visitedNodeIDs) {
 	int disjointConnections0 = 0;
 	int disjointConnections1 = 0;
 
@@ -44,8 +44,11 @@ float Genotype::getDifference(const Genotype &genotype0, const Genotype &genotyp
 		else {
 			weightDifference += std::abs(cit0->second - cit1->second);
 
-			if (searchDepth > 0)
-				connectedNodeDifference += getDifference(genotype0, genotype1, cit0->first, cit1->first, searchDepth - 1, importanceDecay, weightFactor, disjointFactor, functionFactors);
+			visitedNodeIDs.insert(node0ID);
+			visitedNodeIDs.insert(node1ID);
+
+			if (searchDepth != 0)
+				connectedNodeDifference += getDifference(genotype0, genotype1, cit0->first, cit1->first, searchDepth - 1, importanceDecay, weightFactor, disjointFactor, functionFactors, visitedNodeIDs);
 		}
 	}
 
@@ -67,6 +70,8 @@ float Genotype::getDifference(const Genotype &genotype0, const Genotype &genotyp
 }
 
 void Genotype::createRandomFeedForward(size_t numInputs, size_t numOutputs, float minWeight, float maxWeight, const std::vector<float> &functionChances, std::mt19937 &generator) {
+	_nodes.clear();
+	
 	std::uniform_real_distribution<float> weightDist(minWeight, maxWeight);
 
 	size_t numNodes = numInputs + numOutputs;
@@ -207,7 +212,9 @@ void Genotype::addConnection(float minWeight, float maxWeight, std::mt19937 &gen
 	_nodes[connectionNodeIDs[connectionIndex]]->_outputNodes.insert(it0->first);
 }
 
-void Genotype::createFromParents(const Genotype &parent0, const Genotype &parent1, size_t searchDepth, float importanceDecay, float weightFactor, float disjointFactor, const std::unordered_map<FunctionPair, float, FunctionPair> &functionFactors, float averageChance, std::mt19937 &generator) {
+void Genotype::createFromParents(const Genotype &parent0, const Genotype &parent1, float averageChance, std::mt19937 &generator) {
+	_nodes.clear();
+
 	std::uniform_real_distribution<float> dist01(0.0f, 1.0f);
 	
 	// For each node, find the node that is most similar, then remove these nodes so they cannot be used again. Repeat until either parent is out of nodes.
@@ -286,7 +293,7 @@ void Genotype::createFromParents(const Genotype &parent0, const Genotype &parent
 	_nextNodeID = std::max(parent0._nextNodeID, parent1._nextNodeID);
 }
 
-void Genotype::mutate(float addNodeChance, float addConnectionChance, float minWeight, float maxWeight, float perturbationChance, float maxPerturbation, float chanceFunctionChance, const std::vector<float> &functionChances, std::mt19937 &generator) {
+void Genotype::mutate(float addNodeChance, float addConnectionChance, float minWeight, float maxWeight, float perturbationChance, float maxPerturbation, float changeFunctionChance, const std::vector<float> &functionChances, std::mt19937 &generator) {
 	std::uniform_real_distribution<float> dist01(0.0f, 1.0f);
 	std::uniform_real_distribution<float> perturbationDist(-maxPerturbation, maxPerturbation);
 	
@@ -299,7 +306,7 @@ void Genotype::mutate(float addNodeChance, float addConnectionChance, float minW
 		if (dist01(generator) < perturbationChance)
 			it0->second->_bias += perturbationDist(generator);
 
-		if (dist01(generator) < chanceFunctionChance)
+		if (dist01(generator) < changeFunctionChance)
 			it0->second->_functionIndex = roulette(functionChances, generator);
 	}
 
@@ -308,6 +315,18 @@ void Genotype::mutate(float addNodeChance, float addConnectionChance, float minW
 
 	if (dist01(generator) < addConnectionChance)
 		addConnection(minWeight, maxWeight, generator);
+}
+
+float Genotype::getDifference(const Genotype &genotype0, const Genotype &genotype1, float weightFactor, float disjointFactor, const std::unordered_map<FunctionPair, float, FunctionPair> &functionFactors) {
+	float difference = 0.0f;
+
+	for (size_t i = 0; i < genotype0._outputNodeIDs.size(); i++)
+	for (size_t j = 0; j < genotype1._outputNodeIDs.size(); j++) {
+		std::unordered_set<size_t> visitedNodeIDs;
+		difference += getDifference(genotype0, genotype1, genotype0._outputNodeIDs[i], genotype1._outputNodeIDs[j], -1, 1.0f, weightFactor, disjointFactor, functionFactors, visitedNodeIDs);
+	}
+
+	return difference;
 }
 
 void Genotype::removeInput(size_t index) {
@@ -360,4 +379,127 @@ void Genotype::addOutputFeedForward(float minWeight, float maxWeight, std::mt199
 	_nodes[newNodeID] = newNode;
 
 	_outputNodeIDs.push_back(newNodeID);
+}
+
+void Genotype::setNumInputsFeedForward(size_t numInputs, float minWeight, float maxWeight, std::mt19937 &generator, RemoveMethod removalMethod) {
+	switch (removalMethod) {
+	case _random:
+		while (numInputs < getNumInputs()) {
+			std::uniform_int_distribution<int> indexDist(0, getNumInputs() - 1);
+
+			size_t removeIndex = static_cast<size_t>(indexDist(generator));
+
+			removeInput(removeIndex);
+		}
+
+		break;
+
+	case _last:
+		while (numInputs < getNumInputs())
+			removeInput(getNumInputs() - 1);
+	}
+
+	while (numInputs > getNumInputs())
+		addInputFeedForward(minWeight, maxWeight, generator);
+}
+
+void Genotype::setNumOutputsFeedForward(size_t numOutputs, float minWeight, float maxWeight, std::mt19937 &generator, RemoveMethod removalMethod) {
+	switch (removalMethod) {
+	case _random:
+		while (numOutputs < getNumOutputs()) {
+			std::uniform_int_distribution<int> indexDist(0, getNumOutputs() - 1);
+
+			size_t removeIndex = static_cast<size_t>(indexDist(generator));
+
+			removeOutput(removeIndex);
+		}
+
+		break;
+
+	case _last:
+		while (numOutputs < getNumOutputs())
+			removeOutput(getNumOutputs() - 1);
+
+		break;
+	}
+
+	while (numOutputs > getNumOutputs())
+		addOutputFeedForward(minWeight, maxWeight, generator);
+}
+
+void Genotype::readFromStream(std::istream &is) {
+	_nodes.clear();
+
+	int numNodes;
+
+	is >> numNodes;
+
+	for (int i = 0; i < numNodes; i++) {
+		int nodeID;
+		std::shared_ptr<Node> newNode = std::make_shared<Node>();
+
+		int numConnections;
+
+		is >> nodeID >> newNode->_bias >> newNode->_functionIndex >> numConnections;
+
+		for (int j = 0; j < numConnections; j++) {
+			int connectionID;
+			float weight;
+
+			newNode->_connections[connectionID] = weight;
+		}
+
+		_nodes[nodeID] = newNode;
+	}
+
+	int numInputNodes;
+
+	is >> numInputNodes;
+
+	_inputNodeIDs.resize(numInputNodes);
+
+	for (int i = 0; i < numInputNodes; i++)
+		is >> _inputNodeIDs[i];
+
+	int numOutputNodes;
+
+	is >> numOutputNodes;
+
+	_outputNodeIDs.resize(numOutputNodes);
+
+	for (int i = 0; i < numOutputNodes; i++)
+		is >> _outputNodeIDs[i];
+
+	// Add output node IDs
+	for (std::unordered_map<size_t, std::shared_ptr<Node>>::iterator it0 = _nodes.begin(); it0 != _nodes.end(); it0++)
+	for (std::unordered_map<size_t, float>::iterator it1 = it0->second->_connections.begin(); it1 != it0->second->_connections.end(); it1++)
+		_nodes[it1->first]->_outputNodes.insert(it0->first);
+}
+
+void Genotype::writeToStream(std::ostream &os) const {
+	os << _nodes.size() << std::endl;
+
+	for (std::unordered_map<size_t, std::shared_ptr<Node>>::const_iterator cit0 = _nodes.begin(); cit0 != _nodes.end(); cit0++) {
+		os << cit0->first << " " << cit0->second->_bias << " " << cit0->second->_functionIndex << " " << cit0->second->_connections.size() << " ";
+
+		for (std::unordered_map<size_t, float>::const_iterator cit1 = cit0->second->_connections.begin(); cit1 != cit0->second->_connections.end(); cit1++) {
+			os << cit1->first << " " << cit1->second << " ";
+		}
+
+		os << std::endl;
+	}
+
+	os << _inputNodeIDs.size() << std::endl;
+
+	for (size_t i = 0; i < _inputNodeIDs.size(); i++)
+		os << _inputNodeIDs[i] << " ";
+
+	os << std::endl;
+
+	os << _outputNodeIDs.size() << std::endl;
+
+	for (size_t i = 0; i < _outputNodeIDs.size(); i++)
+		os << _outputNodeIDs[i] << " ";
+
+	os << std::endl;
 }

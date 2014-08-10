@@ -6,11 +6,10 @@ Rule to OpenCL
 
 #pragma once
 
-#include <neat/NetworkPhenotype.h>
+#include <ne/Phenotype.h>
 #include <string>
 
 namespace erl {
-	std::string ruleToCL(neat::NetworkPhenotype &phenotype,
-		const neat::NetworkPhenotype::RuleData &ruleData,
+	std::string ruleToCL(ne::Phenotype &phenotype,
 		const std::string &ruleName, const std::vector<std::string> &functionNames);
 }

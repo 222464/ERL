@@ -22,18 +22,19 @@ misrepresented as being the original software.
 #include <erl/simulation/EvolutionaryTrainer.h>
 #include <erl/field/Field2DGenes.h>
 
-#include <neat/ParentSelectorProportional.h>
-
 #include <algorithm>
 
 using namespace erl;
 
 EvolutionaryTrainer::EvolutionaryTrainer()
-: _runsPerExperiment(10)
+: _runsPerExperiment(10),
+_numElites(3),
+_greedExponent(2.0f)
 {}
 
-void EvolutionaryTrainer::create(const std::vector<float> &functionChances,
-	const std::shared_ptr<neat::EvolverSettings> &settings,
+void EvolutionaryTrainer::create(size_t populationSize, 
+	const Field2DEvolverSettings* pSettings,
+	const std::vector<float> &functionChances,
 	const std::shared_ptr<cl::Image2D> &randomImage,
 	const std::shared_ptr<cl::Program> &blurProgram,
 	const std::shared_ptr<cl::Kernel> &blurKernelX,
@@ -43,7 +44,6 @@ void EvolutionaryTrainer::create(const std::vector<float> &functionChances,
 	float minInitRec, float maxInitRec,
 	std::mt19937 &generator)
 {
-	_settings = settings;
 	_randomImage = randomImage;
 	_blurProgram = blurProgram;
 	_blurKernelX = blurKernelX;
@@ -52,11 +52,13 @@ void EvolutionaryTrainer::create(const std::vector<float> &functionChances,
 	_activationFunctionNames = activationFunctionNames;
 	_minInitRec = minInitRec;
 	_maxInitRec = maxInitRec;
-	_evolutionaryAlgorithm.initialize(2, 1, functionChances, std::shared_ptr<neat::ParentSelectorProportional>(new neat::ParentSelectorProportional()), generator,
-		_settings, std::bind(Field2DGenes::genotypeFactory));
+	_evolutionaryAlgorithm.create(populationSize, pSettings, functionChances, generator);
 }
 
-void EvolutionaryTrainer::evaluate(ComputeSystem &cs, Logger &logger, std::mt19937 &generator) {
+void EvolutionaryTrainer::evaluate(const Field2DEvolverSettings* pSettings,
+	const std::vector<float> &functionChances, 
+	ComputeSystem &cs, Logger &logger, std::mt19937 &generator)
+{
 	std::vector<std::vector<float>> fitnesses;
 
 	fitnesses.resize(_experiments.size());
@@ -71,7 +73,7 @@ void EvolutionaryTrainer::evaluate(ComputeSystem &cs, Logger &logger, std::mt199
 		logger << "Evaluating individual " << std::to_string(i + 1) << " of " << std::to_string(_evolutionaryAlgorithm.getPopulationSize()) << endl;
 
 		for (size_t k = 0; k < _runsPerExperiment; k++)
-			experimentFitness += _experiments[j]->evaluate(*std::static_pointer_cast<Field2DGenes>(_evolutionaryAlgorithm._population[i]._genotype), *_settings, _randomImage, _blurProgram, _blurKernelX, _blurKernelY, _activationFunctions, _activationFunctionNames, _minInitRec, _maxInitRec, logger, cs, generator);
+			experimentFitness += _experiments[j]->evaluate(*std::static_pointer_cast<Field2DGenes>(_evolutionaryAlgorithm.getPopulationMember(i)), pSettings, _randomImage, _blurProgram, _blurKernelX, _blurKernelY, _activationFunctions, _activationFunctionNames, _minInitRec, _maxInitRec, logger, cs, generator);
 
 		experimentFitness /= _runsPerExperiment;
 
@@ -110,20 +112,22 @@ void EvolutionaryTrainer::evaluate(ComputeSystem &cs, Logger &logger, std::mt199
 		for (size_t j = 0; j < _experiments.size(); j++)
 			sum += fitnesses[j][i] * _experiments[j]->getExperimentWeight();
 
-		_evolutionaryAlgorithm._population[i]._fitness = sum;
+		_evolutionaryAlgorithm.setFitness(i, sum);
 	}
 }
 
-void EvolutionaryTrainer::reproduce(std::mt19937 &generator) {
-	_evolutionaryAlgorithm.epoch(generator);
+void EvolutionaryTrainer::reproduce(const Field2DEvolverSettings* pSettings,
+	const std::vector<float> &functionChances, std::mt19937 &generator)
+{
+	_evolutionaryAlgorithm.epoch(pSettings, functionChances, generator, _numElites, _greedExponent);
 }
 
 void EvolutionaryTrainer::writeBestToStream(std::ostream &os) const {
 	size_t highestIndex = 0;
 
 	for (size_t i = 1; i < _evolutionaryAlgorithm.getPopulationSize(); i++)
-	if (_evolutionaryAlgorithm._population[i]._fitness > _evolutionaryAlgorithm._population[highestIndex]._fitness)
+	if (_evolutionaryAlgorithm.getFitness(i) > _evolutionaryAlgorithm.getFitness(highestIndex))
 		highestIndex = i;
 
-	std::static_pointer_cast<Field2DGenes>(_evolutionaryAlgorithm._population[highestIndex]._genotype)->writeToStream(os);
+	std::static_pointer_cast<Field2DGenes>(_evolutionaryAlgorithm.getPopulationMember(highestIndex))->writeToStream(os);
 }

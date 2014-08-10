@@ -6,11 +6,6 @@ Main
 
 #include <erl/ERLConfig.h>
 
-#include <neat/Evolver.h>
-#include <neat/NetworkGenotype.h>
-#include <neat/NetworkPhenotype.h>
-#include <neat/Evolver.h>
-
 #include <erl/platform/Field2DGenesToCL.h>
 #include <erl/visualization/FieldVisualizer.h>
 #include <erl/simulation/EvolutionaryTrainer.h>
@@ -29,9 +24,9 @@ Main
 #include <fstream>
 
 // Sets the mode of execution
-//#define TRAIN_ERL
+#define TRAIN_ERL
 //#define VISUALIZE_ERL
-#define EXPERIMENT_ERL
+//#define EXPERIMENT_ERL
 
 int main() {
 	std::cout << "Welcome to ERL. Version " << ERL_VERSION << std::endl;
@@ -58,7 +53,7 @@ int main() {
 	functionNames[1] = "sin";
 	functionNames[2] = "linear";
 
-	functions[0] = std::bind(neat::Neuron::sigmoid, std::placeholders::_1);
+	functions[0] = std::bind([](float x) { return 1.0f / (1.0f + std::exp(-x)); }, std::placeholders::_1);
 	functions[1] = std::bind(std::sinf, std::placeholders::_1);
 	functions[2] = std::bind([](float x) { return std::min<float>(2.0f, std::max<float>(-2.0f, x)); }, std::placeholders::_1);
 
@@ -110,11 +105,11 @@ int main() {
 #ifdef TRAIN_ERL
 	// ------------------------------------------- Training -------------------------------------------
 
-	std::shared_ptr<neat::EvolverSettings> settings(new erl::Field2DEvolverSettings());
+	std::shared_ptr<erl::Field2DEvolverSettings> settings(new erl::Field2DEvolverSettings());
 
 	erl::EvolutionaryTrainer trainer;
 
-	trainer.create(functionChances, settings, randomImage, blurProgram, blurKernelX, blurKernelY, functions, functionNames, -1.0f, 1.0f, generator);
+	trainer.create(20, settings.get(), functionChances, randomImage, blurProgram, blurKernelX, blurKernelY, functions, functionNames, -1.0f, 1.0f, generator);
 
 	trainer.addExperiment(std::shared_ptr<erl::Experiment>(new ExperimentPoleBalancing()));
 	//trainer.addExperiment(std::shared_ptr<erl::Experiment>(new ExperimentOR()));
@@ -124,7 +119,7 @@ int main() {
 	for (size_t g = 0; g < 10000; g++) {
 		logger << "Evaluating generation " << std::to_string(g + 1) << "." << erl::endl;
 
-		trainer.evaluate(cs, logger, generator);
+		trainer.evaluate(settings.get(), functionChances, cs, logger, generator);
 
 		logger << "Saving best to \"erlBestResultSoFar.txt\"" << erl::endl;
 
@@ -134,7 +129,7 @@ int main() {
 
 		logger << "Reproducing generation " << std::to_string(g + 1) << "." << erl::endl;
 
-		trainer.reproduce(generator);
+		trainer.reproduce(settings.get(), functionChances, generator);
 
 		toFile.close();
 
@@ -148,7 +143,7 @@ int main() {
 #ifdef VISUALIZE_ERL
 	// ------------------------------------------- Testing -------------------------------------------
 
-	std::shared_ptr<neat::EvolverSettings> settings(new erl::Field2DEvolverSettings());
+	std::shared_ptr<erl::Field2DEvolverSettings> settings(new erl::Field2DEvolverSettings());
 
 	erl::Field2DGenes genes;
 
@@ -245,7 +240,7 @@ int main() {
 #elif defined (EXPERIMENT_ERL)
 	// ------------------------------------------- Testing -------------------------------------------
 
-	std::shared_ptr<neat::EvolverSettings> settings(new erl::Field2DEvolverSettings());
+	std::shared_ptr<erl::Field2DEvolverSettings> settings(new erl::Field2DEvolverSettings());
 
 	erl::Field2DGenes genes;
 
@@ -263,7 +258,7 @@ int main() {
 	//	genes.mutate(settings.get(), functionChances, innovNum, generator);
 
 	ExperimentPoleBalancing ex;
-	float exRes = ex.evaluate(genes, *settings, randomImage, blurProgram, blurKernelX, blurKernelY, functions, functionNames, -1.0f, 1.0f, logger, cs, generator);
+	float exRes = ex.evaluate(genes, settings.get(), randomImage, blurProgram, blurKernelX, blurKernelY, functions, functionNames, -1.0f, 1.0f, logger, cs, generator);
 
 	std::cout << "Experiment result: " << exRes << std::endl;
 

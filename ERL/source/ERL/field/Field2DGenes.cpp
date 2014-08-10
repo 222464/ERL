@@ -1,14 +1,22 @@
 #include <erl/field/Field2DGenes.h>
 
-#include <erl/field/Field2DEvolverSettings.h>
-
-#include<neat/Evolver.h>
-
 #include <algorithm>
 
 using namespace erl;
 
-void Field2DGenes::initialize(size_t numInputs, size_t numOutputs, const neat::EvolverSettings* pSettings, const std::vector<float> &functionChances, neat::InnovationNumberType &innovationNumber, std::mt19937 &generator) {
+void Field2DGenes::setInputOutputCounts(const Field2DEvolverSettings* pSettings, std::mt19937 &generator) {
+	_connectionUpdateGenotype.setNumInputsFeedForward(_nodeOutputSize + 6, pSettings->_minInitWeight, pSettings->_maxInitWeight, generator);
+	_connectionUpdateGenotype.setNumOutputsFeedForward(_connectionResponseSize, pSettings->_minInitWeight, pSettings->_maxInitWeight, generator);
+
+	_activationUpdateGenotype.setNumInputsFeedForward(_connectionResponseSize + 3 + _numGases, pSettings->_minInitWeight, pSettings->_maxInitWeight, generator);
+	_activationUpdateGenotype.setNumOutputsFeedForward(_nodeOutputSize + _numGases, pSettings->_minInitWeight, pSettings->_maxInitWeight, generator);
+
+	_encoderGenotype.setNumOutputsFeedForward(_connectionResponseSize, pSettings->_minInitWeight, pSettings->_maxInitWeight, generator);
+
+	_decoderGenotype.setNumInputsFeedForward(_nodeOutputSize, pSettings->_minInitWeight, pSettings->_maxInitWeight, generator);
+}
+
+void Field2DGenes::initialize(const Field2DEvolverSettings* pSettings, const std::vector<float> &functionChances, std::mt19937 &generator) {
 	const Field2DEvolverSettings* pF2DSettings = static_cast<const Field2DEvolverSettings*>(pSettings);
 
 	_connectionResponseSize = 1;
@@ -24,92 +32,80 @@ void Field2DGenes::initialize(size_t numInputs, size_t numOutputs, const neat::E
 	_nodeOutputStrengthScalar = nodeOutputStrengthScalarDist(generator);
 
 	// + 3 is for type, random, and reward inputs. + 6 is 1 additional type as well as delta position for connections
-	_connectionUpdateGenotype.initialize(_nodeOutputSize + 6, _connectionResponseSize, pSettings, functionChances, innovationNumber, generator);
-	_activationUpdateGenotype.initialize(_connectionResponseSize + 3 + _numGases, _nodeOutputSize + _numGases, pSettings, functionChances, innovationNumber, generator);
-	_typeSetGenotype.initialize(2, 1, pSettings, functionChances, innovationNumber, generator);
-	_encoderGenotype.initialize(1, _connectionResponseSize, pSettings, functionChances, innovationNumber, generator);
-	_decoderGenotype.initialize(_nodeOutputSize, 1, pSettings, functionChances, innovationNumber, generator);
+	_connectionUpdateGenotype.createRandomFeedForward(_nodeOutputSize + 6, _connectionResponseSize, pSettings->_minInitWeight, pSettings->_maxInitWeight, functionChances, generator);
+	_activationUpdateGenotype.createRandomFeedForward(_connectionResponseSize + 3 + _numGases, _nodeOutputSize + _numGases, pSettings->_minInitWeight, pSettings->_maxInitWeight, functionChances, generator);
+	_typeSetGenotype.createRandomFeedForward(2, 1, pSettings->_minInitWeight, pSettings->_maxInitWeight, functionChances, generator);
+	_encoderGenotype.createRandomFeedForward(1, _connectionResponseSize, pSettings->_minInitWeight, pSettings->_maxInitWeight, functionChances, generator);
+	_decoderGenotype.createRandomFeedForward(_nodeOutputSize, 1, pSettings->_minInitWeight, pSettings->_maxInitWeight, functionChances, generator);
 
 	_recurrentNodeInitBounds.clear();
 	_recurrentConnectionInitBounds.clear();
 }
 
-void Field2DGenes::crossover(const neat::EvolverSettings* pSettings, const std::vector<float> &functionChances, const Evolvable* pOtherParent, Evolvable* pChild, float fitnessForThis, float fitnessForOtherParent, neat::InnovationNumberType &innovationNumber, std::mt19937 &generator) {
-	const Field2DEvolverSettings* pF2DSettings = static_cast<const Field2DEvolverSettings*>(pSettings);
-	const Field2DGenes* pF2DOtherParent = static_cast<const Field2DGenes*>(pOtherParent);
-	Field2DGenes* pF2DChild = static_cast<Field2DGenes*>(pChild);
-
+void Field2DGenes::crossover(const Field2DEvolverSettings* pSettings, const std::vector<float> &functionChances, const Field2DGenes* pParent1, const Field2DGenes* pParent2, std::mt19937 &generator) {
 	std::uniform_real_distribution<float> dist01(0.0f, 1.0f);
 	
-	pF2DChild->_connectionResponseSize = dist01(generator) < 0.5f ? _connectionResponseSize : pF2DOtherParent->_connectionResponseSize;
-	pF2DChild->_nodeOutputSize = dist01(generator) < 0.5f ? _nodeOutputSize : pF2DOtherParent->_nodeOutputSize;
-	pF2DChild->_numGases = dist01(generator) < 0.5f ? _numGases : pF2DOtherParent->_numGases;
+	_connectionResponseSize = dist01(generator) < 0.5f ? pParent1->_connectionResponseSize : pParent2->_connectionResponseSize;
+	_nodeOutputSize = dist01(generator) < 0.5f ? pParent1->_nodeOutputSize : pParent2->_nodeOutputSize;
+	_numGases = dist01(generator) < 0.5f ? pParent1->_numGases : pParent2->_numGases;
 
-	pF2DChild->_inputStrengthScalar = dist01(generator) < pF2DSettings->_averageInputStrengthScalarChance ? (_inputStrengthScalar + pF2DOtherParent->_inputStrengthScalar) * 0.5f : (dist01(generator) < 0.5f ? _inputStrengthScalar : pF2DOtherParent->_inputStrengthScalar);
-	pF2DChild->_connectionStrengthScalar = dist01(generator) < pF2DSettings->_averageConnectionStrengthScalarChance ? (_connectionStrengthScalar + pF2DOtherParent->_connectionStrengthScalar) * 0.5f : (dist01(generator) < 0.5f ? _connectionStrengthScalar : pF2DOtherParent->_connectionStrengthScalar);
-	pF2DChild->_nodeOutputStrengthScalar = dist01(generator) < pF2DSettings->_averageNodeOutputStrengthScalarChance ? (_nodeOutputStrengthScalar + pF2DOtherParent->_nodeOutputStrengthScalar) * 0.5f : (dist01(generator) < 0.5f ? _nodeOutputStrengthScalar : pF2DOtherParent->_nodeOutputStrengthScalar);
+	_inputStrengthScalar = dist01(generator) < pSettings->_averageInputStrengthScalarChance ? (pParent1->_inputStrengthScalar + pParent2->_inputStrengthScalar) * 0.5f : (dist01(generator) < 0.5f ? pParent1->_inputStrengthScalar : pParent2->_inputStrengthScalar);
+	_connectionStrengthScalar = dist01(generator) < pSettings->_averageConnectionStrengthScalarChance ? (pParent1->_connectionStrengthScalar + pParent2->_connectionStrengthScalar) * 0.5f : (dist01(generator) < 0.5f ? pParent1->_connectionStrengthScalar : pParent2->_connectionStrengthScalar);
+	_nodeOutputStrengthScalar = dist01(generator) < pSettings->_averageNodeOutputStrengthScalarChance ? (pParent1->_nodeOutputStrengthScalar + pParent2->_nodeOutputStrengthScalar) * 0.5f : (dist01(generator) < 0.5f ? pParent1->_nodeOutputStrengthScalar : pParent2->_nodeOutputStrengthScalar);
 
-	_connectionUpdateGenotype.crossover(pSettings, functionChances, &pF2DOtherParent->_connectionUpdateGenotype, &pF2DChild->_connectionUpdateGenotype, fitnessForThis, fitnessForOtherParent, innovationNumber, generator);
-	_activationUpdateGenotype.crossover(pSettings, functionChances, &pF2DOtherParent->_activationUpdateGenotype, &pF2DChild->_activationUpdateGenotype, fitnessForThis, fitnessForOtherParent, innovationNumber, generator);
-	_typeSetGenotype.crossover(pSettings, functionChances, &pF2DOtherParent->_typeSetGenotype, &pF2DChild->_typeSetGenotype, fitnessForThis, fitnessForOtherParent, innovationNumber, generator);
-	_encoderGenotype.crossover(pSettings, functionChances, &pF2DOtherParent->_encoderGenotype, &pF2DChild->_encoderGenotype, fitnessForThis, fitnessForOtherParent, innovationNumber, generator);
-	_decoderGenotype.crossover(pSettings, functionChances, &pF2DOtherParent->_decoderGenotype, &pF2DChild->_decoderGenotype, fitnessForThis, fitnessForOtherParent, innovationNumber, generator);
+	_connectionUpdateGenotype.createFromParents(pParent1->_connectionUpdateGenotype, pParent2->_connectionUpdateGenotype, pSettings->_updateCrossoverAverageChance, generator);
+	_activationUpdateGenotype.createFromParents(pParent1->_activationUpdateGenotype, pParent2->_activationUpdateGenotype, pSettings->_updateCrossoverAverageChance, generator);
+	_typeSetGenotype.createFromParents(pParent1->_typeSetGenotype, pParent2->_typeSetGenotype, pSettings->_updateCrossoverAverageChance, generator);
+	_encoderGenotype.createFromParents(pParent1->_encoderGenotype, pParent2->_encoderGenotype, pSettings->_updateCrossoverAverageChance, generator);
+	_decoderGenotype.createFromParents(pParent1->_decoderGenotype, pParent2->_decoderGenotype, pSettings->_updateCrossoverAverageChance, generator);
 
-	pF2DChild->_connectionUpdateGenotype.setNumInputs(_nodeOutputSize + 6, pSettings->_minBias, pSettings->_maxBias, functionChances, innovationNumber, generator); // + 3 for type, random, and reward inputs
-	pF2DChild->_connectionUpdateGenotype.setNumOutputs(_connectionResponseSize, pSettings->_minBias, pSettings->_maxBias, functionChances, innovationNumber, generator);
-
-	pF2DChild->_activationUpdateGenotype.setNumInputs(_connectionResponseSize + 3 + _numGases, pSettings->_minBias, pSettings->_maxBias, functionChances, innovationNumber, generator); // + 3 for type, random, and reward inputs
-	pF2DChild->_activationUpdateGenotype.setNumOutputs(_nodeOutputSize + _numGases, pSettings->_minBias, pSettings->_maxBias, functionChances, innovationNumber, generator);
-
-	pF2DChild->_encoderGenotype.setNumOutputs(_connectionResponseSize, pSettings->_minBias, pSettings->_maxBias, functionChances, innovationNumber, generator);
-
-	pF2DChild->_decoderGenotype.setNumInputs(_nodeOutputSize, pSettings->_minBias, pSettings->_maxBias, functionChances, innovationNumber, generator);
+	setInputOutputCounts(pSettings, generator);
 
 	// ------------------------ Initializations ------------------------
 
-	if (_recurrentNodeInitBounds.size() > pF2DOtherParent->_recurrentNodeInitBounds.size())
-		pF2DChild->_recurrentNodeInitBounds = _recurrentNodeInitBounds;
+	if (pParent1->_recurrentNodeInitBounds.size() > pParent2->_recurrentNodeInitBounds.size())
+		_recurrentNodeInitBounds = pParent1->_recurrentNodeInitBounds;
 	else
-		pF2DChild->_recurrentNodeInitBounds = pF2DOtherParent->_recurrentNodeInitBounds;
+		_recurrentNodeInitBounds = pParent2->_recurrentNodeInitBounds;
 
-	int minRecurrentNodes = std::min(_recurrentNodeInitBounds.size(), pF2DOtherParent->_recurrentNodeInitBounds.size());
+	int minRecurrentNodes = std::min(pParent1->_recurrentNodeInitBounds.size(), pParent2->_recurrentNodeInitBounds.size());
 
 	for (int i = 0; i < minRecurrentNodes; i++) {
 		// Crossover
-		if (dist01(generator) < pF2DSettings->_averageInitChance) {
-			std::get<0>(pF2DChild->_recurrentNodeInitBounds[i]) = (std::get<0>(_recurrentNodeInitBounds[i]) + std::get<0>(pF2DOtherParent->_recurrentNodeInitBounds[i])) * 0.5f;
-			std::get<1>(pF2DChild->_recurrentNodeInitBounds[i]) = (std::get<1>(_recurrentNodeInitBounds[i]) + std::get<1>(pF2DOtherParent->_recurrentNodeInitBounds[i])) * 0.5f;
+		if (dist01(generator) < pSettings->_averageInitChance) {
+			std::get<0>(_recurrentNodeInitBounds[i]) = (std::get<0>(pParent1->_recurrentNodeInitBounds[i]) + std::get<0>(pParent2->_recurrentNodeInitBounds[i])) * 0.5f;
+			std::get<1>(_recurrentNodeInitBounds[i]) = (std::get<1>(pParent1->_recurrentNodeInitBounds[i]) + std::get<1>(pParent2->_recurrentNodeInitBounds[i])) * 0.5f;
 		}
 		else
-			pF2DChild->_recurrentNodeInitBounds[i] = dist01(generator) < 0.5f ? _recurrentNodeInitBounds[i] : pF2DOtherParent->_recurrentNodeInitBounds[i];
+			_recurrentNodeInitBounds[i] = dist01(generator) < 0.5f ? pParent1->_recurrentNodeInitBounds[i] : pParent2->_recurrentNodeInitBounds[i];
 	}
 
-	if (_recurrentConnectionInitBounds.size() > pF2DOtherParent->_recurrentConnectionInitBounds.size())
-		pF2DChild->_recurrentConnectionInitBounds = _recurrentConnectionInitBounds;
+	if (pParent1->_recurrentConnectionInitBounds.size() > pParent2->_recurrentConnectionInitBounds.size())
+		_recurrentConnectionInitBounds = pParent1->_recurrentConnectionInitBounds;
 	else
-		pF2DChild->_recurrentConnectionInitBounds = pF2DOtherParent->_recurrentConnectionInitBounds;
+		_recurrentConnectionInitBounds = pParent2->_recurrentConnectionInitBounds;
 
-	int minRecurrentConnections = std::min(_recurrentConnectionInitBounds.size(), pF2DOtherParent->_recurrentConnectionInitBounds.size());
+	int minRecurrentConnections = std::min(pParent1->_recurrentConnectionInitBounds.size(), pParent2->_recurrentConnectionInitBounds.size());
 
 	for (int i = 0; i < minRecurrentConnections; i++) {
 		// Crossover
-		if (dist01(generator) < pF2DSettings->_averageInitChance) {
-			std::get<0>(pF2DChild->_recurrentConnectionInitBounds[i]) = (std::get<0>(_recurrentConnectionInitBounds[i]) + std::get<0>(pF2DOtherParent->_recurrentConnectionInitBounds[i])) * 0.5f;
-			std::get<1>(pF2DChild->_recurrentConnectionInitBounds[i]) = (std::get<1>(_recurrentConnectionInitBounds[i]) + std::get<1>(pF2DOtherParent->_recurrentConnectionInitBounds[i])) * 0.5f;
+		if (dist01(generator) < pSettings->_averageInitChance) {
+			std::get<0>(_recurrentConnectionInitBounds[i]) = (std::get<0>(pParent1->_recurrentConnectionInitBounds[i]) + std::get<0>(pParent2->_recurrentConnectionInitBounds[i])) * 0.5f;
+			std::get<1>(_recurrentConnectionInitBounds[i]) = (std::get<1>(pParent1->_recurrentConnectionInitBounds[i]) + std::get<1>(pParent2->_recurrentConnectionInitBounds[i])) * 0.5f;
 		}
 		else
-			pF2DChild->_recurrentConnectionInitBounds[i] = dist01(generator) < 0.5f ? _recurrentConnectionInitBounds[i] : pF2DOtherParent->_recurrentConnectionInitBounds[i];
+			_recurrentConnectionInitBounds[i] = dist01(generator) < 0.5f ? pParent1->_recurrentConnectionInitBounds[i] : pParent2->_recurrentConnectionInitBounds[i];
 	}
 }
 
-void Field2DGenes::mutate(const neat::EvolverSettings* pSettings, const std::vector<float> &functionChances, neat::InnovationNumberType &innovationNumber, std::mt19937 &generator) {
+void Field2DGenes::mutate(const Field2DEvolverSettings* pSettings, const std::vector<float> &functionChances, std::mt19937 &generator) {
 	const Field2DEvolverSettings* pF2DSettings = static_cast<const Field2DEvolverSettings*>(pSettings);
 
-	_connectionUpdateGenotype.mutate(pSettings, functionChances, innovationNumber, generator);
-	_activationUpdateGenotype.mutate(pSettings, functionChances, innovationNumber, generator);
-	_typeSetGenotype.mutate(pSettings, functionChances, innovationNumber, generator);
-	_encoderGenotype.mutate(pSettings, functionChances, innovationNumber, generator);
-	_decoderGenotype.mutate(pSettings, functionChances, innovationNumber, generator);
+	_connectionUpdateGenotype.mutate(pSettings->_neAddNodeChance, pSettings->_neAddConnectionChance, pSettings->_minInitWeight, pSettings->_maxInitWeight, pSettings->_neWeightPerturbationChance, pSettings->_neMaxWeightPerturbation, pSettings->_neChangeFunctionChance, functionChances, generator);
+	_activationUpdateGenotype.mutate(pSettings->_neAddNodeChance, pSettings->_neAddConnectionChance, pSettings->_minInitWeight, pSettings->_maxInitWeight, pSettings->_neWeightPerturbationChance, pSettings->_neMaxWeightPerturbation, pSettings->_neChangeFunctionChance, functionChances, generator);
+	_typeSetGenotype.mutate(pSettings->_neAddNodeChance, pSettings->_neAddConnectionChance, pSettings->_minInitWeight, pSettings->_maxInitWeight, pSettings->_neWeightPerturbationChance, pSettings->_neMaxWeightPerturbation, pSettings->_neChangeFunctionChance, functionChances, generator);
+	_encoderGenotype.mutate(pSettings->_neAddNodeChance, pSettings->_neAddConnectionChance, pSettings->_minInitWeight, pSettings->_maxInitWeight, pSettings->_neWeightPerturbationChance, pSettings->_neMaxWeightPerturbation, pSettings->_neChangeFunctionChance, functionChances, generator);
+	_decoderGenotype.mutate(pSettings->_neAddNodeChance, pSettings->_neAddConnectionChance, pSettings->_minInitWeight, pSettings->_maxInitWeight, pSettings->_neWeightPerturbationChance, pSettings->_neMaxWeightPerturbation, pSettings->_neChangeFunctionChance, functionChances, generator);
 
 	std::uniform_real_distribution<float> dist01(0.0f, 1.0f);
 
@@ -140,15 +136,7 @@ void Field2DGenes::mutate(const neat::EvolverSettings* pSettings, const std::vec
 		_nodeOutputStrengthScalar += nodeOutputStrengthPertDist(generator);
 	}
 
-	_connectionUpdateGenotype.setNumInputs(_nodeOutputSize + 6, pSettings->_minBias, pSettings->_maxBias, functionChances, innovationNumber, generator);
-	_connectionUpdateGenotype.setNumOutputs(_connectionResponseSize, pSettings->_minBias, pSettings->_maxBias, functionChances, innovationNumber, generator);
-
-	_activationUpdateGenotype.setNumInputs(_connectionResponseSize + 3 + _numGases, pSettings->_minBias, pSettings->_maxBias, functionChances, innovationNumber, generator);
-	_activationUpdateGenotype.setNumOutputs(_nodeOutputSize + _numGases, pSettings->_minBias, pSettings->_maxBias, functionChances, innovationNumber, generator);
-
-	_encoderGenotype.setNumOutputs(_connectionResponseSize, pSettings->_minBias, pSettings->_maxBias, functionChances, innovationNumber, generator);
-
-	_decoderGenotype.setNumInputs(_nodeOutputSize, pSettings->_minBias, pSettings->_maxBias, functionChances, innovationNumber, generator);
+	setInputOutputCounts(pSettings, generator);
 
 	// ------------------------ Initializations ------------------------
 
@@ -173,21 +161,20 @@ void Field2DGenes::mutate(const neat::EvolverSettings* pSettings, const std::vec
 	}
 }
 
-float Field2DGenes::getSimilarity(const neat::EvolverSettings* pSettings, const std::vector<float> &functionChances, const Evolvable* pOther) {
+float Field2DGenes::getSimilarity(const Field2DEvolverSettings* pSettings, const std::vector<float> &functionChances, const Field2DGenes* pGenotype1, const Field2DGenes* pGenotype2, const std::unordered_map<ne::Genotype::FunctionPair, float, ne::Genotype::FunctionPair> &functionFactors) {
 	const Field2DEvolverSettings* pF2DSettings = static_cast<const Field2DEvolverSettings*>(pSettings);
-	const Field2DGenes* pF2DOther = static_cast<const Field2DGenes*>(pOther);
 
-	return std::abs(_connectionResponseSize - pF2DOther->_connectionResponseSize) * pF2DSettings->_connectionReponseDifferenceFactor +
-		std::abs(_nodeOutputSize - pF2DOther->_nodeOutputSize) * pF2DSettings->_nodeOutputSizeDifferenceFactor +
-		std::abs(_numGases - pF2DOther->_numGases) * pF2DSettings->_gasCountDifferenceFactor +
-		std::abs(_inputStrengthScalar - pF2DOther->_inputStrengthScalar) * pF2DSettings->_inputStrengthDifferenceFactor +
-		std::abs(_connectionStrengthScalar - pF2DOther->_connectionStrengthScalar) * pF2DSettings->_connectionStrengthDifferenceFactor +
-		std::abs(_nodeOutputStrengthScalar - pF2DOther->_nodeOutputStrengthScalar) * pF2DSettings->_nodeOutputStrengthDifferenceFactor +
-		_connectionUpdateGenotype.getSimilarity(pSettings, functionChances, &pF2DOther->_connectionUpdateGenotype) +
-		_activationUpdateGenotype.getSimilarity(pSettings, functionChances, &pF2DOther->_activationUpdateGenotype) +
-		_typeSetGenotype.getSimilarity(pSettings, functionChances, &pF2DOther->_typeSetGenotype) +
-		_encoderGenotype.getSimilarity(pSettings, functionChances, &pF2DOther->_encoderGenotype) +
-		_decoderGenotype.getSimilarity(pSettings, functionChances, &pF2DOther->_decoderGenotype);
+	return std::abs(pGenotype1->_connectionResponseSize - pGenotype2->_connectionResponseSize) * pF2DSettings->_connectionReponseDifferenceFactor +
+		std::abs(pGenotype1->_nodeOutputSize - pGenotype2->_nodeOutputSize) * pF2DSettings->_nodeOutputSizeDifferenceFactor +
+		std::abs(pGenotype1->_numGases - pGenotype2->_numGases) * pF2DSettings->_gasCountDifferenceFactor +
+		std::abs(pGenotype1->_inputStrengthScalar - pGenotype2->_inputStrengthScalar) * pF2DSettings->_inputStrengthDifferenceFactor +
+		std::abs(pGenotype1->_connectionStrengthScalar - pGenotype2->_connectionStrengthScalar) * pF2DSettings->_connectionStrengthDifferenceFactor +
+		std::abs(pGenotype1->_nodeOutputStrengthScalar - pGenotype2->_nodeOutputStrengthScalar) * pF2DSettings->_nodeOutputStrengthDifferenceFactor +
+		ne::Genotype::getDifference(pGenotype1->_connectionUpdateGenotype, pGenotype2->_connectionUpdateGenotype, pSettings->_neWeightFactor, pSettings->_neDisjointFactor, functionFactors) +
+		ne::Genotype::getDifference(pGenotype1->_activationUpdateGenotype, pGenotype2->_activationUpdateGenotype, pSettings->_neWeightFactor, pSettings->_neDisjointFactor, functionFactors) +
+		ne::Genotype::getDifference(pGenotype1->_typeSetGenotype, pGenotype2->_typeSetGenotype, pSettings->_neWeightFactor, pSettings->_neDisjointFactor, functionFactors) +
+		ne::Genotype::getDifference(pGenotype1->_encoderGenotype, pGenotype2->_encoderGenotype, pSettings->_neWeightFactor, pSettings->_neDisjointFactor, functionFactors) +
+		ne::Genotype::getDifference(pGenotype1->_decoderGenotype, pGenotype2->_decoderGenotype, pSettings->_neWeightFactor, pSettings->_neDisjointFactor, functionFactors);
 }
 
 void Field2DGenes::readFromStream(std::istream &is) {

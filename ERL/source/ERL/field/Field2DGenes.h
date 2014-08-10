@@ -6,17 +6,17 @@ Field2D Genes
 
 #pragma once
 
-#include <neat/Evolvable.h>
-#include <neat/NetworkGenotype.h>
+#include <erl/field/Field2DEvolverSettings.h>
+#include <ne/Genotype.h>
 
 namespace erl {
-	class Field2DGenes : public neat::Evolvable {
+	class Field2DGenes {
 	private:
-		neat::NetworkGenotype _connectionUpdateGenotype;
-		neat::NetworkGenotype _activationUpdateGenotype;
-		neat::NetworkGenotype _typeSetGenotype;
-		neat::NetworkGenotype _encoderGenotype;
-		neat::NetworkGenotype _decoderGenotype;
+		ne::Genotype _connectionUpdateGenotype;
+		ne::Genotype _activationUpdateGenotype;
+		ne::Genotype _typeSetGenotype;
+		ne::Genotype _encoderGenotype;
+		ne::Genotype _decoderGenotype;
 
 		int _connectionResponseSize;
 		int _nodeOutputSize;
@@ -29,30 +29,32 @@ namespace erl {
 		std::vector<std::tuple<float, float>> _recurrentNodeInitBounds;
 		std::vector<std::tuple<float, float>> _recurrentConnectionInitBounds;
 
-	public:
-		// Inherited from Evolvable
-		void initialize(size_t numInputs, size_t numOutputs, const neat::EvolverSettings* pSettings, const std::vector<float> &functionChances, neat::InnovationNumberType &innovationNumber, std::mt19937 &generator);
-		void crossover(const neat::EvolverSettings* pSettings, const std::vector<float> &functionChances, const Evolvable* pOtherParent, Evolvable* pChild, float fitnessForThis, float fitnessForOtherParent, neat::InnovationNumberType &innovationNumber, std::mt19937 &generator);
-		void mutate(const neat::EvolverSettings* pSettings, const std::vector<float> &functionChances, neat::InnovationNumberType &innovationNumber, std::mt19937 &generator);
-		float getSimilarity(const neat::EvolverSettings* pSettings, const std::vector<float> &functionChances, const Evolvable* pOther);
+		void setInputOutputCounts(const Field2DEvolverSettings* pSettings, std::mt19937 &generator);
 
-		const neat::NetworkGenotype &getConnectionUpdateGenotype() const {
+	public:
+		void initialize(const Field2DEvolverSettings* pSettings, const std::vector<float> &functionChances, std::mt19937 &generator);
+		void crossover(const Field2DEvolverSettings* pSettings, const std::vector<float> &functionChances, const Field2DGenes* pParent1, const Field2DGenes* pParent2, std::mt19937 &generator);
+		void mutate(const Field2DEvolverSettings* pSettings, const std::vector<float> &functionChances, std::mt19937 &generator);
+		
+		static float getSimilarity(const Field2DEvolverSettings* pSettings, const std::vector<float> &functionChances, const Field2DGenes* pGenotype1, const Field2DGenes* pGenotype2, const std::unordered_map<ne::Genotype::FunctionPair, float, ne::Genotype::FunctionPair> &functionFactors);
+
+		const ne::Genotype &getConnectionUpdateGenotype() const {
 			return _connectionUpdateGenotype;
 		}
 
-		const neat::NetworkGenotype &getActivationUpdateGenotype() const {
+		const ne::Genotype &getActivationUpdateGenotype() const {
 			return _activationUpdateGenotype;
 		}
 
-		const neat::NetworkGenotype &getTypeSetGenotype() const {
+		const ne::Genotype &getTypeSetGenotype() const {
 			return _typeSetGenotype;
 		}
 
-		const neat::NetworkGenotype &getEncoderGenotype() const {
+		const ne::Genotype &getEncoderGenotype() const {
 			return _encoderGenotype;
 		}
 
-		const neat::NetworkGenotype &getDecoderGenotype() const {
+		const ne::Genotype &getDecoderGenotype() const {
 			return _decoderGenotype;
 		}
 
@@ -83,9 +85,6 @@ namespace erl {
 		void readFromStream(std::istream &is);
 		void writeToStream(std::ostream &os) const;
 
-		static std::shared_ptr<neat::Evolvable> genotypeFactory() {
-			return std::shared_ptr<neat::Evolvable>(new Field2DGenes());
-		}
 
 		friend class Field2D;
 		friend class Field2DCL;

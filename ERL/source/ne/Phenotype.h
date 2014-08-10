@@ -6,7 +6,7 @@
 
 namespace ne {
 	class Phenotype {
-	private:
+	public:
 		enum FetchType {
 			_input, _recurrent, _intermediate
 		};
@@ -25,6 +25,7 @@ namespace ne {
 			float _output;
 		};
 
+	private:
 		size_t _numInputs, _numOutputs;
 
 		std::vector<std::shared_ptr<Node>> _nodes;
@@ -36,7 +37,7 @@ namespace ne {
 
 		void createFromGenotype(const Genotype &genotype);
 
-		void execute(const std::vector<float> &inputs, std::vector<float> &outputs, std::vector<float> &recurrentData, std::vector<std::function<float(float)>> &functions);
+		void execute(const std::vector<float> &inputs, std::vector<float> &outputs, std::vector<float> &recurrentData, const std::vector<std::function<float(float)>> &functions);
 
 		size_t getNumInputs() const {
 			return _numInputs;
@@ -48,6 +49,14 @@ namespace ne {
 
 		size_t getRecurrentDataSize() const {
 			return _recurrentNodeIndices.size();
+		}
+
+		const std::vector<std::shared_ptr<Node>> &getNodes() const {
+			return _nodes;
+		}
+
+		const std::vector<size_t> &getRecurrentNodeIndices() const {
+			return _recurrentNodeIndices;
 		}
 	};
 }
