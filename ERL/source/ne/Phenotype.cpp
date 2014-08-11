@@ -72,15 +72,16 @@ void Phenotype::createFromGenotype(const Genotype &genotype) {
 
 			if (c._fetchType != _input) {
 				if (cit1 == nodeIDToIndex.end()) {
-					// Visit this node
-					openNodeIDs.push_back(cit0->first);
+					// Visit this node (if it exists)
+					if (genotype._nodes.find(cit0->first) != genotype._nodes.end())
+						openNodeIDs.push_back(cit0->first);
 				}
 				else { // Add as recurrent source node
-					std::unordered_set<size_t>::const_iterator cit3 = recurrentNodeIndicesSet.find(cit1->first);
+					std::unordered_set<size_t>::const_iterator cit3 = recurrentNodeIndicesSet.find(cit1->second);
 
 					if (cit3 == recurrentNodeIndicesSet.end()) {
-						recurrentNodeIndicesSet.insert(cit1->first);
-						_recurrentNodeIndices.push_back(cit1->first);
+						recurrentNodeIndicesSet.insert(cit1->second);
+						_recurrentNodeIndices.push_back(cit1->second);
 					}
 				}
 			}

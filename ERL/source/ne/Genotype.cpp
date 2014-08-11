@@ -249,7 +249,7 @@ void Genotype::createFromParents(const Genotype &parent0, const Genotype &parent
 			std::shared_ptr<Node> node1 = parent1._nodes.at(*nIDIt1);
 
 			// Merge these nodes
-			size_t ID = *nIDIt0;
+			size_t ID = std::max(*nIDIt0, *nIDIt1);
 
 			std::shared_ptr<Node> child = std::make_shared<Node>();
 
@@ -270,7 +270,6 @@ void Genotype::createFromParents(const Genotype &parent0, const Genotype &parent
 					child->_connections[cit0->first] = cit0->second;
 			}
 
-			// Randomly add disjoint from other side as well
 			for (std::unordered_map<size_t, float>::const_iterator cit1 = node1->_connections.begin(); cit1 != node1->_connections.end(); cit1++) {
 				std::unordered_map<size_t, float>::const_iterator cit0 = node0->_connections.find(cit1->first);
 
@@ -291,17 +290,26 @@ void Genotype::createFromParents(const Genotype &parent0, const Genotype &parent
 
 	// Check if there are leftover nodes. If there are, add them all
 	for (std::list<size_t>::iterator it = parent0NodeIDs.begin(); it != parent0NodeIDs.end(); it++)
-		_nodes[*it] = parent0._nodes.at(*it);
+		_nodes[*it].reset(new Node(*parent0._nodes.at(*it)));
 
 	for (std::unordered_set<size_t>::iterator it = parent1NodeIDs.begin(); it != parent1NodeIDs.end(); it++)
-		_nodes[*it] = parent1._nodes.at(*it);
+		_nodes[*it].reset(new Node(*parent1._nodes.at(*it)));
 
 	_nextNodeID = std::max(parent0._nextNodeID, parent1._nextNodeID);
 
 	// Calculate outgoing connections
 	for (std::unordered_map<size_t, std::shared_ptr<Node>>::iterator it0 = _nodes.begin(); it0 != _nodes.end(); it0++)
-	for (std::unordered_map<size_t, float>::iterator it1 = it0->second->_connections.begin(); it1 != it0->second->_connections.end(); it1++)
-		_nodes[it1->first]->_outputNodes.insert(it0->first);
+	for (std::unordered_map<size_t, float>::iterator it1 = it0->second->_connections.begin(); it1 != it0->second->_connections.end();) {
+		std::unordered_map<size_t, std::shared_ptr<Node>>::iterator it2 = _nodes.find(it1->first);
+
+		if (it2 == _nodes.end())
+			it1 = it0->second->_connections.erase(it1);
+		else {
+			_nodes[it1->first]->_outputNodes.insert(it0->first);
+
+			it1++;
+		}
+	}
 }
 
 void Genotype::mutate(float addNodeChance, float addConnectionChance, float minWeight, float maxWeight, float perturbationChance, float maxPerturbation, float changeFunctionChance, const std::vector<float> &functionChances, std::mt19937 &generator) {
@@ -463,6 +471,8 @@ void Genotype::readFromStream(std::istream &is) {
 			int connectionID;
 			float weight;
 
+			is >> connectionID >> weight;
+
 			newNode->_connections[connectionID] = weight;
 		}
 
@@ -488,9 +498,23 @@ void Genotype::readFromStream(std::istream &is) {
 		is >> _outputNodeIDs[i];
 
 	// Add output node IDs
-	for (std::unordered_map<size_t, std::shared_ptr<Node>>::iterator it0 = _nodes.begin(); it0 != _nodes.end(); it0++)
+	/*for (std::unordered_map<size_t, std::shared_ptr<Node>>::iterator it0 = _nodes.begin(); it0 != _nodes.end(); it0++)
 	for (std::unordered_map<size_t, float>::iterator it1 = it0->second->_connections.begin(); it1 != it0->second->_connections.end(); it1++)
-		_nodes[it1->first]->_outputNodes.insert(it0->first);
+		_nodes[it1->first]->_outputNodes.insert(it0->first);*/
+
+	// Calculate outgoing connections
+	for (std::unordered_map<size_t, std::shared_ptr<Node>>::iterator it0 = _nodes.begin(); it0 != _nodes.end(); it0++)
+	for (std::unordered_map<size_t, float>::iterator it1 = it0->second->_connections.begin(); it1 != it0->second->_connections.end();) {
+		std::unordered_map<size_t, std::shared_ptr<Node>>::iterator it2 = _nodes.find(it1->first);
+
+		if (it2 == _nodes.end())
+			it1 = it0->second->_connections.erase(it1);
+		else {
+			_nodes[it1->first]->_outputNodes.insert(it0->first);
+
+			it1++;
+		}
+	} 
 }
 
 void Genotype::writeToStream(std::ostream &os) const {

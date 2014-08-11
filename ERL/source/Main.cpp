@@ -24,9 +24,9 @@ Main
 #include <fstream>
 
 // Sets the mode of execution
-#define TRAIN_ERL
+//#define TRAIN_ERL
 //#define VISUALIZE_ERL
-//#define EXPERIMENT_ERL
+#define EXPERIMENT_ERL
 
 int main() {
 	std::cout << "Welcome to ERL. Version " << ERL_VERSION << std::endl;
@@ -109,7 +109,7 @@ int main() {
 
 	erl::EvolutionaryTrainer trainer;
 
-	trainer.create(5, settings.get(), functionChances, randomImage, blurProgram, blurKernelX, blurKernelY, functions, functionNames, -1.0f, 1.0f, generator);
+	trainer.create(20, settings.get(), functionChances, randomImage, blurProgram, blurKernelX, blurKernelY, functions, functionNames, -1.0f, 1.0f, generator);
 
 	trainer.addExperiment(std::shared_ptr<erl::Experiment>(new ExperimentPoleBalancing()));
 	//trainer.addExperiment(std::shared_ptr<erl::Experiment>(new ExperimentOR()));

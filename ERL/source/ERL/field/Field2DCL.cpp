@@ -270,7 +270,7 @@ void Field2DCL::update(float reward, ComputeSystem &cs, const std::vector<std::f
 			inputBuffer[inputBufferIndex++] = outputBuffer[j] * _inputStrengthScalar;
 	}
 
-	_inputImage = cl::Image1D(cs.getContext(), CL_MEM_READ_ONLY | CL_MEM_COPY_HOST_PTR, cl::ImageFormat(CL_R, CL_FLOAT), inputBuffer.size(), &inputBuffer[0]);
+ 	_inputImage = cl::Image1D(cs.getContext(), CL_MEM_READ_ONLY | CL_MEM_COPY_HOST_PTR, cl::ImageFormat(CL_R, CL_FLOAT), inputBuffer.size(), &inputBuffer[0]);
 
 	// Execute kernel
 	//_kernelFunctor(cl::EnqueueArgs(cl::NDRange(_numNodes)), _buffers[_currentReadBufferIndex], _buffers[_currentWriteBufferIndex], _typeImage, _inputImage, _outputImage, *_randomImage, seed, reward).wait();

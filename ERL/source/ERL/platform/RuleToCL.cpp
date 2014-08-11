@@ -167,58 +167,25 @@ std::string erl::ruleToCL(ne::Phenotype &phenotype,
 		}
 	}
 
-	std::vector<bool> explored(numNodes, false);
+	std::unordered_set<size_t> recurrentSourceNodesSet;
 
-	std::list<int> queue; // Negative means input node
+	for (size_t i = 0; i < phenotype.getRecurrentNodeIndices().size(); i++)
+		recurrentSourceNodesSet.insert(phenotype.getRecurrentNodeIndices()[i]);
 
-	// Starting points of queue: all nodes without inputs (input nodes included)
-	for (int i = 0; i < phenotype.getNumInputs(); i++)
-		queue.push_back(-i - 1);
+	for (size_t n = 0; n < numNodes; n++) {
+		for (size_t c = 0; c < phenotype.getNodes()[n]->_connections.size(); c++) {
+			const ne::Phenotype::Connection &connection = phenotype.getNodes()[n]->_connections[c];
 
-	for (size_t n = 0; n < numNodes; n++)
-	if (phenotype.getNodes()[n]->_connections.empty()) {
-		queue.push_back(n);
-		//explored[n] = true;
-	}
-
-	while (!queue.empty()) {
-		int current = queue.front();
-
-		queue.pop_front();
-
-		if (current >= 0) {
-			std::shared_ptr<ne::Phenotype::Node> neuron = phenotype.getNodes()[current];
-
-			for (size_t i = 0; i < neuron->_connections.size(); i++) {
-				if (neuron->_connections[i]._fetchType == ne::Phenotype::_input)
-					continue;
-
-				if (!explored[neuron->_connections[i]._fetchIndex]) {
+			if (connection._fetchType != ne::Phenotype::_input) {
+				if (recurrentSourceNodesSet.find(connection._fetchIndex) != recurrentSourceNodesSet.end()) {
 					ConnectionDesc cd;
 
-					cd._inIndex = neuron->_connections[i]._fetchIndex;
-					cd._outIndex = current;
+					cd._inIndex = connection._fetchIndex;
+					cd._outIndex = n;
 
 					data.insert(cd);
 				}
 			}
-
-			// Explore nodes whose inputs are this node
-			for (size_t i = 0; i < outgoingConnectionsRecurrentIntermediate[current].size(); i++) {
-				if (!explored[outgoingConnectionsRecurrentIntermediate[current][i]])
-					queue.push_back(outgoingConnectionsRecurrentIntermediate[current][i]);
-			}
-
-			explored[current] = true;
-		}
-		else {
-			size_t inputIndex = -current - 1;
-
-			// Explore nodes whose inputs are this node
-			for (size_t i = 0; i < outgoingConnectionsInput[inputIndex].size(); i++)
-				queue.push_back(outgoingConnectionsInput[inputIndex][i]);
-
-			//explored[current] = true;
 		}
 	}
 
