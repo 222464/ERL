@@ -149,8 +149,10 @@ void Field2DGenes::mutate(const Field2DEvolverSettings* pSettings, const std::ve
 
 	for (int i = 0; i < _recurrentNodeInitBounds.size(); i++) {
 		// Mutate
-		std::get<0>(_recurrentNodeInitBounds[i]) += distPert(generator);
-		std::get<1>(_recurrentNodeInitBounds[i]) += distPert(generator);
+		if (dist01(generator) < pF2DSettings->_initPerturbationChance) {
+			std::get<0>(_recurrentNodeInitBounds[i]) += distPert(generator);
+			std::get<1>(_recurrentNodeInitBounds[i]) += distPert(generator);
+		}
 
 		if (std::get<0>(_recurrentNodeInitBounds[i]) > std::get<1>(_recurrentNodeInitBounds[i]))
 			std::get<0>(_recurrentNodeInitBounds[i]) = std::get<1>(_recurrentNodeInitBounds[i]) = (std::get<0>(_recurrentNodeInitBounds[i]) + std::get<1>(_recurrentNodeInitBounds[i])) * 0.5f;
@@ -158,8 +160,10 @@ void Field2DGenes::mutate(const Field2DEvolverSettings* pSettings, const std::ve
 
 	for (int i = 0; i < _recurrentConnectionInitBounds.size(); i++) {
 		// Mutate
-		std::get<0>(_recurrentConnectionInitBounds[i]) += distPert(generator);
-		std::get<1>(_recurrentConnectionInitBounds[i]) += distPert(generator);
+		if (dist01(generator) < pF2DSettings->_initPerturbationChance) {
+			std::get<0>(_recurrentConnectionInitBounds[i]) += distPert(generator);
+			std::get<1>(_recurrentConnectionInitBounds[i]) += distPert(generator);
+		}
 
 		if (std::get<0>(_recurrentConnectionInitBounds[i]) > std::get<1>(_recurrentConnectionInitBounds[i]))
 			std::get<0>(_recurrentConnectionInitBounds[i]) = std::get<1>(_recurrentConnectionInitBounds[i]) = (std::get<0>(_recurrentConnectionInitBounds[i]) + std::get<1>(_recurrentConnectionInitBounds[i])) * 0.5f;

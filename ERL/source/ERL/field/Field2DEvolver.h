@@ -35,6 +35,6 @@ namespace erl {
 			return _genotypes.size();
 		}
 
-		void epoch(const Field2DEvolverSettings* pSettings, const std::vector<float> &functionChances, std::mt19937 &generator, size_t numElites, float greedExponent = 2.0f);
+		void epoch(const Field2DEvolverSettings* pSettings, const std::vector<float> &functionChances, std::mt19937 &generator, size_t numElites, float greedExponent = 2.0f, float crossChance = 0.5f);
 	};
 }

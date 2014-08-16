@@ -25,6 +25,20 @@ size_t ne::roulette(const std::vector<float> &chances, std::mt19937 &generator) 
 	return 0;
 }
 
+const Genotype &Genotype::operator=(const Genotype &other) {
+	_nodes.clear();
+
+	_inputNodeIDs = other._inputNodeIDs;
+	_outputNodeIDs = other._outputNodeIDs;
+
+	for (std::unordered_map<size_t, std::shared_ptr<Node>>::const_iterator cit0 = other._nodes.begin(); cit0 != other._nodes.end(); cit0++)
+		_nodes[cit0->first] = std::shared_ptr<Node>(new Node(*cit0->second));
+
+	_nextNodeID = other._nextNodeID;
+
+	return *this;
+}
+
 float Genotype::getDifference(const Genotype &genotype0, const Genotype &genotype1, size_t node0ID, size_t node1ID, int searchDepth, float importanceDecay, float weightFactor, float disjointFactor, const std::unordered_map<FunctionPair, float, FunctionPair> &functionFactors, std::unordered_set<size_t> &visitedNodeIDs) {
 	int disjointConnections0 = 0;
 	int disjointConnections1 = 0;
@@ -189,6 +203,9 @@ void Genotype::addConnection(float minWeight, float maxWeight, std::mt19937 &gen
 	if (inputNodeIDSet.find(cit0->first) != inputNodeIDSet.end() || cit0->second->_connections.size() >= _nodes.size())
 		numFullyConnected++;
 
+	if (numFullyConnected == _nodes.size())
+		return;
+
 	// Select random node that is not an input and isn't fully connected
 	std::uniform_int_distribution<int> nodeIndexDist(0, _nodes.size() - numFullyConnected - 1);
 
@@ -249,7 +266,9 @@ void Genotype::createFromParents(const Genotype &parent0, const Genotype &parent
 			std::shared_ptr<Node> node1 = parent1._nodes.at(*nIDIt1);
 
 			// Merge these nodes
-			size_t ID = std::max(*nIDIt0, *nIDIt1);
+			assert(*nIDIt0 == *nIDIt1);
+
+			size_t ID = *nIDIt0;
 
 			std::shared_ptr<Node> child = std::make_shared<Node>();
 

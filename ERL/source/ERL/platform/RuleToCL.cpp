@@ -210,7 +210,7 @@ std::string erl::ruleToCL(ne::Phenotype &phenotype,
 	}
 
 	// Recurrent
-	for (size_t i = phenotype.getNumInputs(); i < phenotype.getRecurrentNodeIndices().size(); i++) {
+	for (size_t i = 0; i < phenotype.getRecurrentNodeIndices().size(); i++) {
 		code += "float* recurrent" + std::to_string(phenotype.getRecurrentNodeIndices()[i]);
 
 		code += ", ";

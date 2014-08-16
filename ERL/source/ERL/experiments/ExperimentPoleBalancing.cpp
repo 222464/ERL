@@ -51,9 +51,9 @@ float ExperimentPoleBalancing::evaluate(erl::Field2DGenes &fieldGenes, const erl
 	float cartMass = 2.0f;
 	sf::Vector2f massVel(0.0f, 0.0f);
 	float poleAngle = static_cast<float>(std::_Pi) * 0.0f;
-	float poleAngleVel = initPoleVelDist(generator);
+	float poleAngleVel = 0.0f;// initPoleVelDist(generator);
 	float poleAngleAccel = 0.0f;
-	float cartX = initPosDist(generator);
+	float cartX = 0.0f;// initPosDist(generator);
 	sf::Vector2f massPos(cartX, poleLength);
 	float cartVelX = 0.0f;
 	float cartAccelX = 0.0f;
@@ -80,7 +80,7 @@ float ExperimentPoleBalancing::evaluate(erl::Field2DGenes &fieldGenes, const erl
 		else
 			fitness = -(static_cast<float>(std::_Pi) * 0.5f - (static_cast<float>(std::_Pi) * 2.0f - poleAngle));
 
-		//fitness = fitness - std::fabsf(poleAngleVel * 40.0f);
+		fitness = fitness - std::fabsf(poleAngleVel * 0.25f);
 
 		totalFitness += fitness * 0.1f;
 

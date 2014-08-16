@@ -45,7 +45,7 @@ void Field2DEvolver::create(size_t populationSize, const Field2DEvolverSettings*
 	}
 }
 
-void Field2DEvolver::epoch(const Field2DEvolverSettings* pSettings, const std::vector<float> &functionChances, std::mt19937 &generator, size_t numElites, float greedExponent) {
+void Field2DEvolver::epoch(const Field2DEvolverSettings* pSettings, const std::vector<float> &functionChances, std::mt19937 &generator, size_t numElites, float greedExponent, float crossChance) {
 	normalizeFitness(greedExponent);
 
 	std::vector<std::shared_ptr<Field2DGenes>> newPopulation;
@@ -72,16 +72,28 @@ void Field2DEvolver::epoch(const Field2DEvolverSettings* pSettings, const std::v
 
 	float fitnessSum = std::accumulate(_fitnesses.begin(), _fitnesses.end(), 0.0f);
 
+	std::uniform_real_distribution<float> dist01(0.0f, 1.0f);
+
 	while (newPopulation.size() < getPopulationSize()) {
-		size_t parentIndex1 = roulette(fitnessSum, generator);
-		size_t parentIndex2 = roulette(fitnessSum, generator);
+		if (dist01(generator) < crossChance) {
+			size_t parentIndex1 = roulette(fitnessSum, generator);
+			std::shared_ptr<Field2DGenes> newGenotype(new Field2DGenes(*_genotypes[parentIndex1]));
 
-		std::shared_ptr<Field2DGenes> newGenotype = std::make_shared<Field2DGenes>();
+			newGenotype->mutate(pSettings, functionChances, generator);
 
-		newGenotype->crossover(pSettings, functionChances, _genotypes[parentIndex1].get(), _genotypes[parentIndex2].get(), generator);
-		newGenotype->mutate(pSettings, functionChances, generator);
+			newPopulation.push_back(newGenotype);
+		}
+		else {
+			size_t parentIndex1 = roulette(fitnessSum, generator);
+			size_t parentIndex2 = roulette(fitnessSum, generator);
 
-		newPopulation.push_back(newGenotype);
+			std::shared_ptr<Field2DGenes> newGenotype = std::make_shared<Field2DGenes>();
+
+			newGenotype->crossover(pSettings, functionChances, _genotypes[parentIndex1].get(), _genotypes[parentIndex2].get(), generator);
+			newGenotype->mutate(pSettings, functionChances, generator);
+
+			newPopulation.push_back(newGenotype);
+		}
 	}
 
 	_genotypes = newPopulation;

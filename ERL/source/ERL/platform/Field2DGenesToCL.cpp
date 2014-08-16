@@ -249,14 +249,14 @@ std::string erl::field2DGenesNodeUpdateToCL(erl::Field2DGenes &genes, const erl:
 		code += "&output" + std::to_string(i) + ", ";
 	}
 
-	// Add recurrent connections
-	for (int i = 0; i < nodePhenotype.getRecurrentNodeIndices().size(); i++) {
-		code += "&nodeRec" + std::to_string(i) + ", ";
-	}
-
 	// Add gas
 	for (int i = 0; i < genes.getNumGases(); i++) {
 		code += "&gasOut" + std::to_string(i) + ", ";
+	}
+
+	// Add recurrent connections
+	for (int i = 0; i < nodePhenotype.getRecurrentNodeIndices().size(); i++) {
+		code += "&nodeRec" + std::to_string(i) + ", ";
 	}
 
 	code.pop_back();

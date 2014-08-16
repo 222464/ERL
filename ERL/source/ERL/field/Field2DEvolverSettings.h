@@ -31,6 +31,7 @@ namespace erl {
 		float _gasCountDifferenceFactor;
 
 		float _averageInitChance;
+		float _initPerturbationChance;
 		float _maxInitPerturbation;
 
 		float _minInitInputStrengthScalar;
