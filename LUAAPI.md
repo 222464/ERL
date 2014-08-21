@@ -17,29 +17,27 @@ There are 6 functions that are part of the Lua API:
 
 Experiments typically follow this pattern of API calls:
 
-`
-h = generatePhenotype(...)
-
-for (number of simulation steps) do
-	<read sensors (environment)>
-
-	setPhenotypeInput(h, 0, sensorValue0)
-	setPhenotypeInput(h, 1, sensorValue1)
-	...
-	setPhenotypeInput(h, n, sensorValueN)
+	h = generatePhenotype(...)
 	
-	stepPhenotype(h, r, 24)
+	for (number of simulation steps) do
+		<read sensors (environment)>
 	
-	output0 = getPhenotypeOutput(h, 0)
-	output1 = getPhenotypeOutput(h, 1)
-	...
-	outputN = getPhenotypeOutput(h, n)
-	
-	<perform action>
-end
+		setPhenotypeInput(h, 0, sensorValue0)
+		setPhenotypeInput(h, 1, sensorValue1)
+		...
+		setPhenotypeInput(h, n, sensorValueN)
+		
+		stepPhenotype(h, r, 24)
+		
+		output0 = getPhenotypeOutput(h, 0)
+		output1 = getPhenotypeOutput(h, 1)
+		...
+		outputN = getPhenotypeOutput(h, n)
+		
+		<perform action>
+	end
 
-setFitness(myAwesomelyHighFitness)
-`
+	setFitness(myAwesomelyHighFitness)
 
 Note that setFitness must be called at least once, since it tells the ERL host program how well the genotype performed in this experiment!
 
