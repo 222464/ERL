@@ -106,11 +106,11 @@ void Field2DGenes::crossover(const Field2DEvolverSettings* pSettings, const std:
 void Field2DGenes::mutate(const Field2DEvolverSettings* pSettings, const std::vector<float> &functionChances, std::mt19937 &generator) {
 	const Field2DEvolverSettings* pF2DSettings = static_cast<const Field2DEvolverSettings*>(pSettings);
 
-	_connectionUpdateGenotype.mutate(pSettings->_neAddNodeChance, pSettings->_neAddConnectionChance, pSettings->_minInitWeight, pSettings->_maxInitWeight, pSettings->_neWeightPerturbationChance, pSettings->_neMaxWeightPerturbation, pSettings->_neChangeFunctionChance, functionChances, generator);
-	_activationUpdateGenotype.mutate(pSettings->_neAddNodeChance, pSettings->_neAddConnectionChance, pSettings->_minInitWeight, pSettings->_maxInitWeight, pSettings->_neWeightPerturbationChance, pSettings->_neMaxWeightPerturbation, pSettings->_neChangeFunctionChance, functionChances, generator);
-	_typeSetGenotype.mutate(pSettings->_neAddNodeChance, pSettings->_neAddConnectionChance, pSettings->_minInitWeight, pSettings->_maxInitWeight, pSettings->_neWeightPerturbationChance, pSettings->_neMaxWeightPerturbation, pSettings->_neChangeFunctionChance, functionChances, generator);
-	_encoderGenotype.mutate(pSettings->_neAddNodeChance, pSettings->_neAddConnectionChance, pSettings->_minInitWeight, pSettings->_maxInitWeight, pSettings->_neWeightPerturbationChance, pSettings->_neMaxWeightPerturbation, pSettings->_neChangeFunctionChance, functionChances, generator);
-	_decoderGenotype.mutate(pSettings->_neAddNodeChance, pSettings->_neAddConnectionChance, pSettings->_minInitWeight, pSettings->_maxInitWeight, pSettings->_neWeightPerturbationChance, pSettings->_neMaxWeightPerturbation, pSettings->_neChangeFunctionChance, functionChances, generator);
+	_connectionUpdateGenotype.mutate(pSettings->_neAddNodeChance, pSettings->_neAddConnectionChance, pSettings->_minInitWeight, pSettings->_maxInitWeight, pSettings->_neWeightPerturbationChance, pSettings->_neWeightPerturbationStdDev, pSettings->_neChangeFunctionChance, functionChances, generator);
+	_activationUpdateGenotype.mutate(pSettings->_neAddNodeChance, pSettings->_neAddConnectionChance, pSettings->_minInitWeight, pSettings->_maxInitWeight, pSettings->_neWeightPerturbationChance, pSettings->_neWeightPerturbationStdDev, pSettings->_neChangeFunctionChance, functionChances, generator);
+	_typeSetGenotype.mutate(pSettings->_neAddNodeChance, pSettings->_neAddConnectionChance, pSettings->_minInitWeight, pSettings->_maxInitWeight, pSettings->_neWeightPerturbationChance, pSettings->_neWeightPerturbationStdDev, pSettings->_neChangeFunctionChance, functionChances, generator);
+	_encoderGenotype.mutate(pSettings->_neAddNodeChance, pSettings->_neAddConnectionChance, pSettings->_minInitWeight, pSettings->_maxInitWeight, pSettings->_neWeightPerturbationChance, pSettings->_neWeightPerturbationStdDev, pSettings->_neChangeFunctionChance, functionChances, generator);
+	_decoderGenotype.mutate(pSettings->_neAddNodeChance, pSettings->_neAddConnectionChance, pSettings->_minInitWeight, pSettings->_maxInitWeight, pSettings->_neWeightPerturbationChance, pSettings->_neWeightPerturbationStdDev, pSettings->_neChangeFunctionChance, functionChances, generator);
 
 	std::uniform_real_distribution<float> dist01(0.0f, 1.0f);
 

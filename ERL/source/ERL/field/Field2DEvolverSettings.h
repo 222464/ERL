@@ -15,7 +15,7 @@ namespace erl {
 		float _neAddNodeChance;
 		float _neAddConnectionChance;
 		float _neWeightPerturbationChance;
-		float _neMaxWeightPerturbation;
+		float _neWeightPerturbationStdDev;
 		float _neChangeFunctionChance;
 
 		float _neWeightFactor;

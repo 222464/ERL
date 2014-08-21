@@ -331,18 +331,18 @@ void Genotype::createFromParents(const Genotype &parent0, const Genotype &parent
 	}
 }
 
-void Genotype::mutate(float addNodeChance, float addConnectionChance, float minWeight, float maxWeight, float perturbationChance, float maxPerturbation, float changeFunctionChance, const std::vector<float> &functionChances, std::mt19937 &generator) {
+void Genotype::mutate(float addNodeChance, float addConnectionChance, float minWeight, float maxWeight, float perturbationChance, float perturbationStdDev, float changeFunctionChance, const std::vector<float> &functionChances, std::mt19937 &generator) {
 	std::uniform_real_distribution<float> dist01(0.0f, 1.0f);
-	std::uniform_real_distribution<float> perturbationDist(-maxPerturbation, maxPerturbation);
+	std::normal_distribution<float> distPerturbation(0.0f, perturbationStdDev);
 	
 	// Mutate existing connections
 	for (std::unordered_map<size_t, std::shared_ptr<Node>>::iterator it0 = _nodes.begin(); it0 != _nodes.end(); it0++) {
 		for (std::unordered_map<size_t, float>::iterator it1 = it0->second->_connections.begin(); it1 != it0->second->_connections.end(); it1++)
 		if (dist01(generator) < perturbationChance)
-			it1->second += perturbationDist(generator);
+			it1->second += distPerturbation(generator);
 
 		if (dist01(generator) < perturbationChance)
-			it0->second->_bias += perturbationDist(generator);
+			it0->second->_bias += distPerturbation(generator);
 
 		if (dist01(generator) < changeFunctionChance)
 			it0->second->_functionIndex = roulette(functionChances, generator);

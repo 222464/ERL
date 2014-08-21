@@ -69,7 +69,7 @@ float ExperimentPoleBalancing::evaluate(erl::Field2DGenes &fieldGenes, const erl
 
 	float totalFitness = 0.0f;
 
-	for (size_t i = 0; i < 600; i++) {
+	for (size_t i = 0; i < 1800; i++) {
 		//std::cout << "Step " << i << std::endl;
 
 		// Update fitness

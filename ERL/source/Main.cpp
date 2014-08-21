@@ -11,10 +11,10 @@ Main
 #include <erl/simulation/EvolutionaryTrainer.h>
 #include <erl/field/Field2DEvolverSettings.h>
 
-#include <erl/experiments/ExperimentAND.h>
-#include <erl/experiments/ExperimentOR.h>
-#include <erl/experiments/ExperimentXOR.h>
+#include <erl/experiments/LuaExperiment.h>
 #include <erl/experiments/ExperimentPoleBalancing.h>
+
+#include <plot/plot.h>
 
 #include <SFML/Window.hpp>
 #include <SFML/Graphics.hpp>
@@ -22,11 +22,6 @@ Main
 #include <time.h>
 #include <iostream>
 #include <fstream>
-
-// Sets the mode of execution
-#define TRAIN_ERL
-//#define VISUALIZE_ERL
-//#define EXPERIMENT_ERL
 
 int main() {
 	std::cout << "Welcome to ERL. Version " << ERL_VERSION << std::endl;
@@ -102,392 +97,475 @@ int main() {
 	std::shared_ptr<cl::Kernel> blurKernelX(new cl::Kernel(*blurProgram, "blurX"));
 	std::shared_ptr<cl::Kernel> blurKernelY(new cl::Kernel(*blurProgram, "blurY"));
 
-#ifdef TRAIN_ERL
-	// ------------------------------------------- Training -------------------------------------------
+	std::cout << "Select option:" << std::endl;
+	std::cout << "(1) - Train ERL" << std::endl;
+	std::cout << "(2) - Visualize ERL (Pole Balacing)" << std::endl;
+	std::cout << "(3) - Exit" << std::endl;
+	std::cout << ">";
 
-	std::shared_ptr<erl::Field2DEvolverSettings> settings(new erl::Field2DEvolverSettings());
+	int choice = -1;
 
-	erl::EvolutionaryTrainer trainer;
+	do {
+		try {
+			std::cin >> choice;
 
-	trainer.create(16, settings.get(), functionChances, randomImage, blurProgram, blurKernelX, blurKernelY, functions, functionNames, -1.0f, 1.0f, generator);
+			if (choice < 1 || choice > 3)
+				throw std::exception();
+		}
+		catch (std::exception) {
+			std::cout << "Invalid selection. Enter again." << std::endl;
+			std::cout << ">";
+			choice = -1;
+		}
+	} while (choice == -1);
 
-	trainer.addExperiment(std::shared_ptr<erl::Experiment>(new ExperimentPoleBalancing()));
-	//trainer.addExperiment(std::shared_ptr<erl::Experiment>(new ExperimentOR()));
-	//trainer.addExperiment(std::shared_ptr<erl::Experiment>(new ExperimentAND()));
-	//trainer.addExperiment(std::shared_ptr<erl::Experiment>(new ExperimentXOR()));
+	switch (choice) {
+	case 1:
+	{
+			  // ------------------------------------------- Training -------------------------------------------
 
-	for (size_t g = 0; g < 10000; g++) {
-		logger << "Evaluating generation " << std::to_string(g + 1) << "." << erl::endl;
+			  std::cout << "Looking for Lua experiments in \"experiments.txt\"..." << std::endl;
 
-		trainer.evaluate(settings.get(), functionChances, cs, logger, generator);
+			  std::ifstream fromFile("experiments.txt");
 
-		logger << "Saving best to \"erlBestResultSoFar.txt\"" << erl::endl;
+			  if (!fromFile.is_open()) {
+				  std::cout << "Could not open \"experiments.txt\"! Please create the file. Exiting..." << std::endl;
 
-		std::ofstream toFile("erlBestResultSoFar.txt");
+				  return 0;
+			  }
 
-		trainer.writeBestToStream(toFile);
+			  std::vector<std::string> experimentFileNames;
 
-		logger << "Reproducing generation " << std::to_string(g + 1) << "." << erl::endl;
+			  while (fromFile.good() && !fromFile.eof()) {
+				  std::string line;
 
-		trainer.reproduce(settings.get(), functionChances, generator);
+				  std::getline(fromFile, line);
 
-		toFile.close();
+				  experimentFileNames.push_back(line);
+			  }
 
-		logger << "Generation completed." << erl::endl;
+			  fromFile.close();
 
-		if (sf::Keyboard::isKeyPressed(sf::Keyboard::Escape))
-			break;
+			  std::cout << "Found experiment file names:" << std::endl;
+
+			  for (size_t i = 0; i < experimentFileNames.size(); i++)
+				  std::cout << "\"" << experimentFileNames[i] << "\"" << std::endl;
+
+			  std::cout << "Enter population size:" << std::endl;
+			  std::cout << ">";
+
+			  int populationSize = -1;
+
+			  do {
+				  try {
+					  std::cin >> populationSize;
+
+					  if (populationSize < 4)
+						  throw std::exception();
+				  }
+				  catch (std::exception) {
+					  std::cout << "Invalid population size. Must be greater than 3 (since there are 3 elites). Enter again." << std::endl;
+					  std::cout << ">";
+					  populationSize = -1;
+				  }
+			  } while (populationSize == -1);
+
+			  std::cout << "Enter runs per experiment:" << std::endl;
+			  std::cout << ">";
+
+			  int runsPerExperiment = -1;
+
+			  do {
+				  try {
+					  std::cin >> runsPerExperiment;
+
+					  if (runsPerExperiment < 0)
+						  throw std::exception();
+				  }
+				  catch (std::exception) {
+					  std::cout << "Invalid number of runs per experiment. Enter again." << std::endl;
+					  std::cout << ">";
+					  runsPerExperiment = -1;
+				  }
+			  } while (runsPerExperiment == -1);
+
+			  std::cout << "Enter number of generations:" << std::endl;
+			  std::cout << ">";
+
+			  int numGenerations = -1;
+
+			  do {
+				  try {
+					  std::cin >> numGenerations;
+
+					  if (numGenerations < 0)
+						  throw std::exception();
+				  }
+				  catch (std::exception) {
+					  std::cout << "Invalid number of generations. Enter again." << std::endl;
+					  std::cout << ">";
+					  numGenerations = -1;
+				  }
+			  } while (numGenerations == -1);
+
+			  std::shared_ptr<erl::Field2DEvolverSettings> settings(new erl::Field2DEvolverSettings());
+
+			  erl::EvolutionaryTrainer trainer;
+
+			  trainer.create(populationSize, settings.get(), functionChances, randomImage, blurProgram, blurKernelX, blurKernelY, functions, functionNames, -1.0f, 1.0f, generator);
+
+			  trainer._runsPerExperiment = runsPerExperiment;
+
+			  for (size_t i = 0; i < experimentFileNames.size(); i++) {
+				  std::shared_ptr<LuaExperiment> experiment(new LuaExperiment());
+
+				  experiment->create(experimentFileNames[i]);
+
+				  trainer.addExperiment(experiment);
+			  }
+
+			  sf::RenderWindow renderWindow;
+
+			  renderWindow.create(sf::VideoMode(800, 600), "Plot", sf::Style::Default);
+
+			  sf::plot::Plot p;
+
+			  p.setSize(sf::Vector2f(800, 600));
+			  p.setTitle("Fitness");
+			  p.setFont("arial.ttf");
+			  p.setXLabel("Generation");
+			  p.setYLabel("Fitness");
+			  p.setBackgroundColor(sf::Color::White);
+			  p.setTitleColor(sf::Color::Black);
+			  p.setPosition(sf::Vector2f(0.0f, 0.0f));
+
+			  sf::plot::Curve &cMax = p.createCurve("Max Fitness", sf::Color::Blue);
+			  sf::plot::Curve &cAverage = p.createCurve("Average Fitness", sf::Color::Red);
+
+			  p.prepare();
+
+			  renderWindow.draw(p);
+			  renderWindow.display();
+
+			  for (size_t g = 0; g < numGenerations; g++) {
+				  logger << "Evaluating generation " << std::to_string(g + 1) << "." << erl::endl;
+
+				  trainer.evaluate(settings.get(), functionChances, cs, logger, generator);
+
+				  cMax.addValue(trainer.getBestFitness());
+				  cAverage.addValue(trainer.getAverageFitness());
+				  p.prepare();
+
+				  logger << "Saving best to \"erlOutput.txt\"" << erl::endl;
+
+				  std::ofstream toFile("erlOutput.txt");
+
+				  trainer.writeBestToStream(toFile);
+
+				  logger << "Reproducing generation " << std::to_string(g + 1) << "." << erl::endl;
+
+				  trainer.reproduce(settings.get(), functionChances, generator);
+
+				  toFile.close();
+
+				  logger << "Generation completed." << erl::endl;
+
+				  if (sf::Keyboard::isKeyPressed(sf::Keyboard::Escape))
+					  break;
+
+				  sf::Event windowEvent;
+
+				  bool quit = false;
+
+				  while (renderWindow.pollEvent(windowEvent)) {
+					  switch (windowEvent.type) {
+					  case sf::Event::Closed:
+						  quit = true;
+						  break;
+					  }
+				  }
+
+				  if (quit)
+					  break;
+
+				  renderWindow.draw(p);
+
+				  renderWindow.display();
+			  }
 	}
 
-#else
-#ifdef VISUALIZE_ERL
-	// ------------------------------------------- Testing -------------------------------------------
+		break;
 
-	std::shared_ptr<erl::Field2DEvolverSettings> settings(new erl::Field2DEvolverSettings());
+	case 2:
+	{
+			  // ------------------------------------------- Visualize -------------------------------------------
 
-	erl::Field2DGenes genes;
+			  std::cout << "Testing and visualizing \"erlOutput.txt\"." << std::endl;
 
-	std::ifstream fromFile("erlBestResultSoFar.txt");
+			  std::shared_ptr<erl::Field2DEvolverSettings> settings(new erl::Field2DEvolverSettings());
 
-	genes.readFromStream(fromFile);
+			  erl::Field2DGenes genes;
 
-	fromFile.close();
+			  std::ifstream fromFile("erlOutput.txt");
 
-	//neat::InnovationNumberType innovNum;
+			  if (!fromFile.is_open()) {
+				  std::cout << "Could not find \"erlOutput.txt\"! Make sure the file exists. Exiting..." << std::endl;
 
-	//genes.initialize(2, 1, settings.get(), functionChances, innovNum, generator);
+				  return 0;
+			  }
 
-	erl::Field2DCL field;
+			  genes.readFromStream(fromFile);
 
-	float sizeScalar = 800.0f / 64.0f;
+			  fromFile.close();
 
-	field.create(genes, cs, 32, 32, 2, 4, 1, 1, 1, randomImage, blurProgram, blurKernelX, blurKernelY, functions, functionNames, -1.0f, 1.0f, generator, logger);
+			  //neat::InnovationNumberType innovNum;
 
-	field.setInput(0, 1.0f);
-	field.setInput(1, -1.0f);
+			  //genes.initialize(2, 1, settings.get(), functionChances, innovNum, generator);
 
-	sf::RenderWindow window;
-	window.create(sf::VideoMode(800, 800), "ERL Test", sf::Style::Default);
+			  //for (int i = 0; i < 20; i++)
+			  //	genes.mutate(settings.get(), functionChances, innovNum, generator);
 
-	window.setVerticalSyncEnabled(true);
+			  ExperimentPoleBalancing ex;
+			  float exRes = ex.evaluate(genes, settings.get(), randomImage, blurProgram, blurKernelX, blurKernelY, functions, functionNames, -1.0f, 1.0f, logger, cs, generator);
 
-	bool quit = false;
+			  std::cout << "Experiment result: " << exRes << std::endl;
 
-	sf::Clock clock;
+			  erl::Field2DCL field;
 
-	float dt = 0.017f;
+			  float sizeScalar = 600.0f / 32.0f;
 
-	erl::FieldVisualizer fv;
+			  field.create(genes, cs, 32, 32, 2, 4, 1, 1, 1, randomImage, blurProgram, blurKernelX, blurKernelY, functions, functionNames, -1.0f, 1.0f, generator, logger);
 
-	fv.create(cs, "adapter.cl", field, logger);
+			  sf::RenderWindow window;
+			  window.create(sf::VideoMode(1400, 600), "ERL Test", sf::Style::Default);
 
-	do {
-		clock.restart();
+			  window.setVerticalSyncEnabled(true);
 
-		// ----------------------------- Input -----------------------------
+			  // -------------------------- Load Resources --------------------------
 
-		sf::Event windowEvent;
+			  sf::Texture backgroundTexture;
+			  sf::Texture cartTexture;
+			  sf::Texture poleTexture;
 
-		while (window.pollEvent(windowEvent)) {
-			switch (windowEvent.type) {
-			case sf::Event::Closed:
-				quit = true;
-				break;
-			}
-		}
+			  backgroundTexture.loadFromFile("resources/background.png");
+			  cartTexture.loadFromFile("resources/cart.png");
+			  poleTexture.loadFromFile("resources/pole.png");
 
-		if (sf::Keyboard::isKeyPressed(sf::Keyboard::Escape))
-			quit = true;
+			  // --------------------------------------------------------------------
 
-		float reward = 0.0f;
+			  sf::Sprite backgroundSprite;
+			  sf::Sprite cartSprite;
+			  sf::Sprite poleSprite;
 
-		if (sf::Keyboard::isKeyPressed(sf::Keyboard::A))
-			reward = 1.0f;
-		else if (sf::Keyboard::isKeyPressed(sf::Keyboard::D))
-			reward = -1.0f;
+			  backgroundSprite.setTexture(backgroundTexture);
+			  cartSprite.setTexture(cartTexture);
+			  poleSprite.setTexture(poleTexture);
 
-		// -------------------------------------------------------------------
+			  backgroundSprite.setPosition(sf::Vector2f(0.0f, 0.0f));
 
-		window.clear();
+			  cartSprite.setOrigin(sf::Vector2f(static_cast<float>(cartSprite.getTexture()->getSize().x) * 0.5f, static_cast<float>(cartSprite.getTexture()->getSize().y)));
+			  poleSprite.setOrigin(sf::Vector2f(static_cast<float>(poleSprite.getTexture()->getSize().x) * 0.5f, static_cast<float>(poleSprite.getTexture()->getSize().y)));
 
-		field.update(reward, cs, functions, 16, generator);
+			  // ----------------------------- Physics ------------------------------
 
-		fv.update(cs, field);
+			  float pixelsPerMeter = 128.0f;
+			  float poleLength = 1.0f;
+			  float g = -2.8f;
+			  float massMass = 20.0f;
+			  float cartMass = 2.0f;
+			  sf::Vector2f massPos(0.0f, poleLength);
+			  sf::Vector2f massVel(0.0f, 0.0f);
+			  float poleAngle = static_cast<float>(std::_Pi) * 0.0f;
+			  float poleAngleVel = 0.0f;
+			  float poleAngleAccel = 0.0f;
+			  float cartX = 0.0f;
+			  float cartVelX = 0.0f;
+			  float cartAccelX = 0.0f;
+			  float poleRotationalFriction = 0.008f;
+			  float cartMoveRadius = 1.8f;
+			  float cartFriction = 0.02f;
+			  float maxSpeed = 3.0f;
 
-		sf::Image image;
-		image.create(fv.getSoftImage().getWidth(), fv.getSoftImage().getHeight());
+			  // ---------------------------- Game Loop -----------------------------
 
-		for (int x = 0; x < image.getSize().x; x++)
-		for (int y = 0; y < image.getSize().y; y++) {
-			image.setPixel(x, y, fv.getSoftImage().getPixel(x, y));
-		}
+			  bool quit = false;
 
-		sf::Texture texture;
-		texture.loadFromImage(image);
+			  sf::Clock clock;
 
-		sf::Sprite sprite;
-		sprite.setTexture(texture);
-		sprite.setScale(sf::Vector2f(sizeScalar, sizeScalar));
+			  float dt = 0.017f;
 
-		window.draw(sprite);
+			  float fitness = 0.0f;
 
-		// -------------------------------------------------------------------
+			  float prevFitness = 0.0f;
 
-		window.display();
+			  bool reverseDirection = false;
 
-		dt = clock.getElapsedTime().asSeconds();
-	} while (!quit);
-#elif defined (EXPERIMENT_ERL)
-	// ------------------------------------------- Testing -------------------------------------------
+			  std::uniform_real_distribution<float> dist01(0.0f, 1.0f);
 
-	std::shared_ptr<erl::Field2DEvolverSettings> settings(new erl::Field2DEvolverSettings());
+			  erl::FieldVisualizer fv;
 
-	erl::Field2DGenes genes;
+			  fv.create(cs, "adapter.cl", field, logger);
 
-	std::ifstream fromFile("erlBestResultSoFar.txt");
+			  do {
+				  clock.restart();
 
-	genes.readFromStream(fromFile);
+				  // ----------------------------- Input -----------------------------
 
-	fromFile.close();
+				  sf::Event windowEvent;
 
-	//neat::InnovationNumberType innovNum;
+				  while (window.pollEvent(windowEvent))
+				  {
+					  switch (windowEvent.type)
+					  {
+					  case sf::Event::Closed:
+						  quit = true;
+						  break;
+					  }
+				  }
 
-	//genes.initialize(2, 1, settings.get(), functionChances, innovNum, generator);
+				  if (sf::Keyboard::isKeyPressed(sf::Keyboard::Escape))
+					  quit = true;
 
-	//for (int i = 0; i < 20; i++)
-	//	genes.mutate(settings.get(), functionChances, innovNum, generator);
+				  // Update fitness
+				  if (poleAngle < static_cast<float>(std::_Pi))
+					  fitness = -(static_cast<float>(std::_Pi) * 0.5f - poleAngle);
+				  else
+					  fitness = -(static_cast<float>(std::_Pi) * 0.5f - (static_cast<float>(std::_Pi) * 2.0f - poleAngle));
 
-	ExperimentPoleBalancing ex;
-	float exRes = ex.evaluate(genes, settings.get(), randomImage, blurProgram, blurKernelX, blurKernelY, functions, functionNames, -1.0f, 1.0f, logger, cs, generator);
+				  fitness = fitness - std::fabsf(poleAngleVel * 0.25f);
 
-	std::cout << "Experiment result: " << exRes << std::endl;
+				  if (sf::Keyboard::isKeyPressed(sf::Keyboard::A))
+					  fitness = -cartX;
+				  else if (sf::Keyboard::isKeyPressed(sf::Keyboard::D))
+					  fitness = cartX;
 
-	erl::Field2DCL field;
+				  // ------------------------------ AI -------------------------------
 
-	float sizeScalar = 600.0f / 32.0f;
+				  float dFitness = fitness - prevFitness;
 
-	field.create(genes, cs, 32, 32, 2, 4, 1, 1, 1, randomImage, blurProgram, blurKernelX, blurKernelY, functions, functionNames, -1.0f, 1.0f, generator, logger);
+				  float error = dFitness * 10.0f;
 
-	sf::RenderWindow window;
-	window.create(sf::VideoMode(1400, 600), "ERL Test", sf::Style::Default);
+				  //agent.reinforceArp(std::min(1.0f, std::max(-1.0f, error)) * 0.5f + 0.5f, 0.1f, 0.05f);
 
-	window.setVerticalSyncEnabled(true);
+				  field.setInput(0, cartX * 0.25f);
+				  field.setInput(1, cartVelX);
+				  field.setInput(2, std::fmodf(poleAngle + static_cast<float>(std::_Pi), 2.0f * static_cast<float>(std::_Pi)));
+				  field.setInput(3, poleAngleVel);
 
-	// -------------------------- Load Resources --------------------------
+				  field.update(error, cs, functions, 16, generator);
 
-	sf::Texture backgroundTexture;
-	sf::Texture cartTexture;
-	sf::Texture poleTexture;
+				  float dir = std::min<float>(1.0f, std::max<float>(-1.0f, field.getOutput(0)));
 
-	backgroundTexture.loadFromFile("resources/background.png");
-	cartTexture.loadFromFile("resources/cart.png");
-	poleTexture.loadFromFile("resources/pole.png");
+				  //dir = 1.4f * (dir * 2.0f - 1.0f);
 
-	// --------------------------------------------------------------------
+				  float agentForce = 4000.0f * dir;
+				  //float agentForce = 2000.0f * agent.getOutput(0);
 
-	sf::Sprite backgroundSprite;
-	sf::Sprite cartSprite;
-	sf::Sprite poleSprite;
+				  // ---------------------------- Physics ----------------------------
 
-	backgroundSprite.setTexture(backgroundTexture);
-	cartSprite.setTexture(cartTexture);
-	poleSprite.setTexture(poleTexture);
+				  float pendulumCartAccelX = cartAccelX;
 
-	backgroundSprite.setPosition(sf::Vector2f(0.0f, 0.0f));
+				  if (cartX < -cartMoveRadius)
+					  pendulumCartAccelX = 0.0f;
+				  else if (cartX > cartMoveRadius)
+					  pendulumCartAccelX = 0.0f;
 
-	cartSprite.setOrigin(sf::Vector2f(static_cast<float>(cartSprite.getTexture()->getSize().x) * 0.5f, static_cast<float>(cartSprite.getTexture()->getSize().y)));
-	poleSprite.setOrigin(sf::Vector2f(static_cast<float>(poleSprite.getTexture()->getSize().x) * 0.5f, static_cast<float>(poleSprite.getTexture()->getSize().y)));
+				  poleAngleAccel = pendulumCartAccelX * std::cosf(poleAngle) + g * std::sinf(poleAngle);
+				  poleAngleVel += -poleRotationalFriction * poleAngleVel + poleAngleAccel * dt;
+				  poleAngle += poleAngleVel * dt;
 
-	// ----------------------------- Physics ------------------------------
+				  massPos = sf::Vector2f(cartX + std::cosf(poleAngle + static_cast<float>(std::_Pi) * 0.5f) * poleLength, std::sinf(poleAngle + static_cast<float>(std::_Pi) * 0.5f) * poleLength);
 
-	float pixelsPerMeter = 128.0f;
-	float poleLength = 1.0f;
-	float g = -2.8f;
-	float massMass = 20.0f;
-	float cartMass = 2.0f;
-	sf::Vector2f massPos(0.0f, poleLength);
-	sf::Vector2f massVel(0.0f, 0.0f);
-	float poleAngle = static_cast<float>(std::_Pi) * 0.0f;
-	float poleAngleVel = 0.0f;
-	float poleAngleAccel = 0.0f;
-	float cartX = 0.0f;
-	float cartVelX = 0.0f;
-	float cartAccelX = 0.0f;
-	float poleRotationalFriction = 0.008f;
-	float cartMoveRadius = 1.8f;
-	float cartFriction = 0.02f;
-	float maxSpeed = 3.0f;
+				  float force = 0.0f;
 
-	// ---------------------------- Game Loop -----------------------------
+				  if (std::fabsf(cartVelX) < maxSpeed) {
+					  force = std::max<float>(-4000.0f, std::min<float>(4000.0f, agentForce));
 
-	bool quit = false;
+					  if (sf::Keyboard::isKeyPressed(sf::Keyboard::Left))
+						  force = -4000.0f;
 
-	sf::Clock clock;
+					  if (sf::Keyboard::isKeyPressed(sf::Keyboard::Right))
+						  force = 4000.0f;
+				  }
 
-	float dt = 0.017f;
+				  if (cartX < -cartMoveRadius) {
+					  cartX = -cartMoveRadius;
 
-	float fitness = 0.0f;
+					  cartAccelX = -cartVelX / dt;
+					  cartVelX = -0.5f * cartVelX;
+				  }
+				  else if (cartX > cartMoveRadius) {
+					  cartX = cartMoveRadius;
 
-	float prevFitness = 0.0f;
+					  cartAccelX = -cartVelX / dt;
+					  cartVelX = -0.5f * cartVelX;
+				  }
 
-	bool reverseDirection = false;
+				  cartAccelX = 0.25f * (force + massMass * poleLength * poleAngleAccel * std::cosf(poleAngle) - massMass * poleLength * poleAngleVel * poleAngleVel * std::sinf(poleAngle)) / (massMass + cartMass);
+				  cartVelX += -cartFriction * cartVelX + cartAccelX * dt;
+				  cartX += cartVelX * dt;
 
-	std::uniform_real_distribution<float> dist01(0.0f, 1.0f);
+				  poleAngle = std::fmodf(poleAngle, (2.0f * static_cast<float>(std::_Pi)));
 
-	erl::FieldVisualizer fv;
+				  if (poleAngle < 0.0f)
+					  poleAngle += static_cast<float>(std::_Pi) * 2.0f;
 
-	fv.create(cs, "adapter.cl", field, logger);
+				  // ---------------------------- Rendering ----------------------------
 
-	do {
-		clock.restart();
+				  window.clear();
 
-		// ----------------------------- Input -----------------------------
+				  window.draw(backgroundSprite);
 
-		sf::Event windowEvent;
+				  cartSprite.setPosition(sf::Vector2f(static_cast<float>(800.0f) * 0.5f + pixelsPerMeter * cartX, static_cast<float>(600.0f) * 0.5f + 3.0f));
 
-		while (window.pollEvent(windowEvent))
-		{
-			switch (windowEvent.type)
-			{
-			case sf::Event::Closed:
-				quit = true;
-				break;
-			}
-		}
+				  window.draw(cartSprite);
 
-		if (sf::Keyboard::isKeyPressed(sf::Keyboard::Escape))
-			quit = true;
+				  poleSprite.setPosition(cartSprite.getPosition() + sf::Vector2f(0.0f, -45.0f));
+				  poleSprite.setRotation(poleAngle * 180.0f / static_cast<float>(std::_Pi) + 180.0f);
 
-		// Update fitness
-		if (poleAngle < static_cast<float>(std::_Pi))
-			fitness = -(static_cast<float>(std::_Pi) * 0.5f - poleAngle);
-		else
-			fitness = -(static_cast<float>(std::_Pi) * 0.5f - (static_cast<float>(std::_Pi) * 2.0f - poleAngle));
+				  window.draw(poleSprite);
 
-		fitness = fitness - std::fabsf(poleAngleVel * 0.25f);
+				  // ------------------------
 
-		if (sf::Keyboard::isKeyPressed(sf::Keyboard::A))
-			fitness = -cartX;
-		else if (sf::Keyboard::isKeyPressed(sf::Keyboard::D))
-			fitness = cartX;
+				  fv.update(cs, field);
 
-		// ------------------------------ AI -------------------------------
+				  sf::Image image;
+				  image.create(fv.getSoftImage().getWidth(), fv.getSoftImage().getHeight());
 
-		float dFitness = fitness - prevFitness;
+				  for (int x = 0; x < image.getSize().x; x++)
+				  for (int y = 0; y < image.getSize().y; y++) {
+					  image.setPixel(x, y, fv.getSoftImage().getPixel(x, y));
+				  }
 
-		float error = dFitness * 10.0f;
+				  sf::Texture texture;
+				  texture.loadFromImage(image);
 
-		//agent.reinforceArp(std::min(1.0f, std::max(-1.0f, error)) * 0.5f + 0.5f, 0.1f, 0.05f);
+				  sf::Sprite sprite;
+				  sprite.setTexture(texture);
+				  sprite.setScale(sf::Vector2f(sizeScalar, sizeScalar));
 
-		field.setInput(0, cartX * 0.25f);
-		field.setInput(1, cartVelX);
-		field.setInput(2, std::fmodf(poleAngle + static_cast<float>(std::_Pi), 2.0f * static_cast<float>(std::_Pi)));
-		field.setInput(3, poleAngleVel);
+				  sprite.setPosition(800.0f, 0.0f);
 
-		field.update(error, cs, functions, 16, generator);
+				  window.draw(sprite);
 
-		float dir = std::min<float>(1.0f, std::max<float>(-1.0f, field.getOutput(0)));
+				  // -------------------------------------------------------------------
 
-		//dir = 1.4f * (dir * 2.0f - 1.0f);
+				  window.display();
 
-		float agentForce = 4000.0f * dir;
-		//float agentForce = 2000.0f * agent.getOutput(0);
+				  dt = clock.getElapsedTime().asSeconds();
+			  } while (!quit);
+	}
 
-		// ---------------------------- Physics ----------------------------
+		break;
 
-		float pendulumCartAccelX = cartAccelX;
+	case 3:
 
-		if (cartX < -cartMoveRadius)
-			pendulumCartAccelX = 0.0f;
-		else if (cartX > cartMoveRadius)
-			pendulumCartAccelX = 0.0f;
+		break;
 
-		poleAngleAccel = pendulumCartAccelX * std::cosf(poleAngle) + g * std::sinf(poleAngle);
-		poleAngleVel += -poleRotationalFriction * poleAngleVel + poleAngleAccel * dt;
-		poleAngle += poleAngleVel * dt;
+	default:
 
-		massPos = sf::Vector2f(cartX + std::cosf(poleAngle + static_cast<float>(std::_Pi) * 0.5f) * poleLength, std::sinf(poleAngle + static_cast<float>(std::_Pi) * 0.5f) * poleLength);
-
-		float force = 0.0f;
-
-		if (std::fabsf(cartVelX) < maxSpeed) {
-			force = std::max<float>(-4000.0f, std::min<float>(4000.0f, agentForce));
-
-			if (sf::Keyboard::isKeyPressed(sf::Keyboard::Left))
-				force = -4000.0f;
-
-			if (sf::Keyboard::isKeyPressed(sf::Keyboard::Right))
-				force = 4000.0f;
-		}
-
-		if (cartX < -cartMoveRadius) {
-			cartX = -cartMoveRadius;
-
-			cartAccelX = -cartVelX / dt;
-			cartVelX = -0.5f * cartVelX;
-		}
-		else if (cartX > cartMoveRadius) {
-			cartX = cartMoveRadius;
-
-			cartAccelX = -cartVelX / dt;
-			cartVelX = -0.5f * cartVelX;
-		}
-
-		cartAccelX = 0.25f * (force + massMass * poleLength * poleAngleAccel * std::cosf(poleAngle) - massMass * poleLength * poleAngleVel * poleAngleVel * std::sinf(poleAngle)) / (massMass + cartMass);
-		cartVelX += -cartFriction * cartVelX + cartAccelX * dt;
-		cartX += cartVelX * dt;
-
-		poleAngle = std::fmodf(poleAngle, (2.0f * static_cast<float>(std::_Pi)));
-
-		if (poleAngle < 0.0f)
-			poleAngle += static_cast<float>(std::_Pi) * 2.0f;
-
-		// ---------------------------- Rendering ----------------------------
-
-		window.clear();
-
-		window.draw(backgroundSprite);
-
-		cartSprite.setPosition(sf::Vector2f(static_cast<float>(800.0f) * 0.5f + pixelsPerMeter * cartX, static_cast<float>(600.0f) * 0.5f + 3.0f));
-
-		window.draw(cartSprite);
-
-		poleSprite.setPosition(cartSprite.getPosition() + sf::Vector2f(0.0f, -45.0f));
-		poleSprite.setRotation(poleAngle * 180.0f / static_cast<float>(std::_Pi) + 180.0f);
-
-		window.draw(poleSprite);
-
-		// ------------------------
-
-		fv.update(cs, field);
-
-		sf::Image image;
-		image.create(fv.getSoftImage().getWidth(), fv.getSoftImage().getHeight());
-
-		for (int x = 0; x < image.getSize().x; x++)
-		for (int y = 0; y < image.getSize().y; y++) {
-			image.setPixel(x, y, fv.getSoftImage().getPixel(x, y));
-		}
-
-		sf::Texture texture;
-		texture.loadFromImage(image);
-
-		sf::Sprite sprite;
-		sprite.setTexture(texture);
-		sprite.setScale(sf::Vector2f(sizeScalar, sizeScalar));
-
-		sprite.setPosition(800.0f, 0.0f);
-
-		window.draw(sprite);
-
-		// -------------------------------------------------------------------
-
-		window.display();
-
-		dt = clock.getElapsedTime().asSeconds();
-	} while (!quit);
-#endif
-#endif
+		break;
+	}
 
 	return 0;
 }

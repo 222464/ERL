@@ -82,29 +82,6 @@ void EvolutionaryTrainer::evaluate(const Field2DEvolverSettings* pSettings,
 		fitnesses[j][i] = experimentFitness;
 	}
 
-	// Normalize fitness for each experiment
-	for (size_t i = 0; i < _experiments.size(); i++) {
-		float minimum = fitnesses[i][0];
-		float maximum = fitnesses[i][0];
-
-		for (size_t j = 0; j < fitnesses[i].size(); j++) {
-			minimum = std::min<float>(minimum, fitnesses[i][j]);
-			maximum = std::max<float>(maximum, fitnesses[i][j]);
-		}
-
-		if (maximum == minimum) {
-			for (size_t j = 0; j < fitnesses[i].size(); j++)
-				fitnesses[i][j] = 0.0f;
-		}
-		else {
-			float rangeInv = 1.0f / (maximum - minimum);
-
-			// Rescale fitnesses
-			for (size_t j = 0; j < fitnesses[i].size(); j++)
-				fitnesses[i][j] = (fitnesses[i][j] - minimum) * rangeInv;
-		}
-	}
-
 	// Set fitnesses, scaled by experiment weight
 	for (size_t i = 0; i < _evolutionaryAlgorithm.getPopulationSize(); i++) {
 		float sum = 0.0f;
@@ -130,4 +107,22 @@ void EvolutionaryTrainer::writeBestToStream(std::ostream &os) const {
 		highestIndex = i;
 
 	std::static_pointer_cast<Field2DGenes>(_evolutionaryAlgorithm.getPopulationMember(highestIndex))->writeToStream(os);
+}
+
+float EvolutionaryTrainer::getBestFitness() const {
+	float maximum = _evolutionaryAlgorithm.getFitness(0);
+
+	for (size_t i = 1; i < _evolutionaryAlgorithm.getPopulationSize(); i++)
+		maximum = std::max<float>(maximum, _evolutionaryAlgorithm.getFitness(i));
+
+	return maximum;
+}
+
+float EvolutionaryTrainer::getAverageFitness() const {
+	float sum = 0.0f;
+
+	for (size_t i = 0; i < _evolutionaryAlgorithm.getPopulationSize(); i++)
+		sum += _evolutionaryAlgorithm.getFitness(i);
+
+	return sum / _evolutionaryAlgorithm.getPopulationSize();
 }

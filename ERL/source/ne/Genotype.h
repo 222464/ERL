@@ -72,7 +72,7 @@ namespace ne {
 
 		void createRandomFeedForward(size_t numInputs, size_t numOutputs, float minWeight, float maxWeight, const std::vector<float> &functionChances, std::mt19937 &generator);
 		void createFromParents(const Genotype &parent0, const Genotype &parent1, float averageChance, std::mt19937 &generator);
-		void mutate(float addNodeChance, float addConnectionChance, float minWeight, float maxWeight, float perturbationChance, float maxPerturbation, float changeFunctionChance, const std::vector<float> &functionChances, std::mt19937 &generator);
+		void mutate(float addNodeChance, float addConnectionChance, float minWeight, float maxWeight, float perturbationChance, float perturbationStdDev, float changeFunctionChance, const std::vector<float> &functionChances, std::mt19937 &generator);
 	
 		static float getDifference(const Genotype &genotype0, const Genotype &genotype1, float weightFactor, float disjointFactor, const std::unordered_map<FunctionPair, float, FunctionPair> &functionFactors);
 

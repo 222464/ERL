@@ -49,10 +49,15 @@ namespace erl {
 			const std::vector<float> &functionChances, 
 			ComputeSystem &cs, Logger &logger, std::mt19937 &generator);
 
+		void normalizeFitnesses();
+
 		void reproduce(const Field2DEvolverSettings* pSettings,
 			const std::vector<float> &functionChances, std::mt19937 &generator);
 
 		void writeBestToStream(std::ostream &os) const;
+
+		float getBestFitness() const;
+		float getAverageFitness() const;
 
 		void addExperiment(const std::shared_ptr<Experiment> &experiment) {
 			_experiments.push_back(experiment);

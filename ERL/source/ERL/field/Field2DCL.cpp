@@ -162,10 +162,10 @@ void Field2DCL::create(Field2DGenes &genes, ComputeSystem &cs, int width, int he
 	unsigned char inputIndex = 0;
 	unsigned char outputIndex = 0;
 
-	float xi = inputSpacing * 0.25f;
+	float xi = inputSpacing;
 	int xii = static_cast<int>(xi + 0.5f);
 
-	float xo = getWidth() - outputSpacing * 0.25f;
+	float xo = getWidth() - outputSpacing;
 	int xoi = static_cast<int>(xo + 0.5f);
 
 	for (int i = 0; i < getNumInputs(); i++) {

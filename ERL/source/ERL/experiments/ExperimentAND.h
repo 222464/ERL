@@ -21,7 +21,6 @@
 	This version has been modified from the original.
 */
 
-
 #pragma once
 
 #include <erl/simulation/Experiment.h>
