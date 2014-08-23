@@ -8,7 +8,7 @@
 
 -- Generate the field
 
-local handle = generatePhenotype(32, 32, 3, 4, 1, 2, 2)
+local handle = generatePhenotype(16, 16, 3, 4, 1, 2, 2)
 
 local pixelsPerMeter = 128.0
 local poleLength = 1.0
@@ -35,7 +35,7 @@ local prevFitness = 0.0
 
 local totalFitness = 0.0
 
-for i = 1, 180, 1 do
+for i = 1, 1200, 1 do
 	-- Update fitness
 	prevFitness = fitness
 
@@ -60,7 +60,7 @@ for i = 1, 180, 1 do
 	setPhenotypeInput(handle, 2, math.fmod(poleAngle + math.pi, 2.0 * math.pi))
 	setPhenotypeInput(handle, 3, poleAngleVel)
 
-	stepPhenotype(handle, err, 24)
+	stepPhenotype(handle, err, 8)
 
 	local dir = math.min(1.0, math.max(-1.0, getPhenotypeOutput(handle, 0)))
 

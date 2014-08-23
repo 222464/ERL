@@ -61,6 +61,9 @@ float LuaExperiment::evaluate(erl::Field2DGenes &fieldGenes, const erl::Field2DE
 	_pCs = &cs;
 	_pGenerator = &generator;
 
+	_lastHandle = 0;
+	_handleToField.clear();
+	
 	int s = luaL_dofile(_pLuaState, _experimentFileName.c_str());
 
 	if (s != 0) {

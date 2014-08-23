@@ -124,19 +124,19 @@ void Field2DGenes::mutate(const Field2DEvolverSettings* pSettings, const std::ve
 		_numGases++;
 
 	if (dist01(generator) < pF2DSettings->_mutateInputStrengthChance) {
-		std::uniform_real_distribution<float> inputStrengthPertDist(-pF2DSettings->_maxInputStrengthPerturbation, pF2DSettings->_maxInputStrengthPerturbation);
+		std::normal_distribution<float> inputStrengthPertDist(0.0f, pF2DSettings->_inputStrengthPerturbationStdDev);
 
 		_inputStrengthScalar += inputStrengthPertDist(generator);
 	}
 
 	if (dist01(generator) < pF2DSettings->_mutateConnectionStrengthChance) {
-		std::uniform_real_distribution<float> connectionStrengthPertDist(-pF2DSettings->_maxConnectionStrengthPerturbation, pF2DSettings->_maxConnectionStrengthPerturbation);
+		std::normal_distribution<float> connectionStrengthPertDist(0.0f, pF2DSettings->_connectionStrengthPerturbationStdDev);
 
 		_connectionStrengthScalar += connectionStrengthPertDist(generator);
 	}
 
 	if (dist01(generator) < pF2DSettings->_mutateNodeOutputStrengthChance) {
-		std::uniform_real_distribution<float> nodeOutputStrengthPertDist(-pF2DSettings->_maxNodeOutputStrengthPerturbation, pF2DSettings->_maxNodeOutputStrengthPerturbation);
+		std::normal_distribution<float> nodeOutputStrengthPertDist(0.0f, pF2DSettings->_nodeOutputStrengthPerturbationStdDev);
 
 		_nodeOutputStrengthScalar += nodeOutputStrengthPertDist(generator);
 	}
@@ -145,7 +145,7 @@ void Field2DGenes::mutate(const Field2DEvolverSettings* pSettings, const std::ve
 
 	// ------------------------ Initializations ------------------------
 
-	std::uniform_real_distribution<float> distPert(-pF2DSettings->_maxInitPerturbation, pF2DSettings->_maxInitPerturbation);
+	std::normal_distribution<float> distPert(0.0f, pF2DSettings->_initPerturbationStdDev);
 
 	for (int i = 0; i < _recurrentNodeInitBounds.size(); i++) {
 		// Mutate

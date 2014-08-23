@@ -224,13 +224,13 @@ int main() {
 				  trainer.addExperiment(experiment);
 			  }
 
-			  sf::RenderWindow renderWindow;
+			  sf::RenderTexture rt;
 
-			  renderWindow.create(sf::VideoMode(800, 600), "Plot", sf::Style::Default);
+			  rt.create(800, 600);
 
 			  sf::plot::Plot p;
 
-			  p.setSize(sf::Vector2f(800, 600));
+			  p.setSize(sf::Vector2f(rt.getSize().x, rt.getSize().y));
 			  p.setTitle("Fitness");
 			  p.setFont("arial.ttf");
 			  p.setXLabel("Generation");
@@ -242,19 +242,39 @@ int main() {
 			  sf::plot::Curve &cMax = p.createCurve("Max Fitness", sf::Color::Blue);
 			  sf::plot::Curve &cAverage = p.createCurve("Average Fitness", sf::Color::Red);
 
+			  cMax.setFill(false);
+			  cAverage.setFill(false);
+
 			  p.prepare();
 
-			  renderWindow.draw(p);
-			  renderWindow.display();
+			  float plotMin = 99999.0f;
+			  float plotMax = -99999.0f;
+
+			  rt.draw(p);
+			  rt.display();
 
 			  for (size_t g = 0; g < numGenerations; g++) {
 				  logger << "Evaluating generation " << std::to_string(g + 1) << "." << erl::endl;
 
 				  trainer.evaluate(settings.get(), functionChances, cs, logger, generator);
 
-				  cMax.addValue(trainer.getBestFitness());
-				  cAverage.addValue(trainer.getAverageFitness());
+				  float bestFitness = trainer.getBestFitness();
+				  float averageFitness = trainer.getAverageFitness();
+
+				  plotMin = std::min<float>(bestFitness, plotMin);
+				  plotMax = std::max<float>(bestFitness, plotMax);
+				  plotMin = std::min<float>(averageFitness, plotMin);
+				  plotMax = std::max<float>(averageFitness, plotMax);
+
+				  cMax.addValue(bestFitness);
+				  cAverage.addValue(averageFitness);
+
 				  p.prepare();
+
+				  cMax.prepare(sf::Vector2f(0.0f, static_cast<float>(g + 1)), sf::Vector2f(plotMin, plotMax));
+				  cAverage.prepare(sf::Vector2f(0.0f, static_cast<float>(g + 1)), sf::Vector2f(plotMin, plotMax));
+
+				  //p.prepare();
 
 				  logger << "Saving best to \"erlOutput.txt\"" << erl::endl;
 
@@ -268,29 +288,16 @@ int main() {
 
 				  toFile.close();
 
-				  logger << "Generation completed." << erl::endl;
+				  logger << "Generation completed. Updating plot at \"plot.png\"" << erl::endl;
 
 				  if (sf::Keyboard::isKeyPressed(sf::Keyboard::Escape))
 					  break;
 
-				  sf::Event windowEvent;
+				  rt.draw(p);
 
-				  bool quit = false;
+				  rt.display();
 
-				  while (renderWindow.pollEvent(windowEvent)) {
-					  switch (windowEvent.type) {
-					  case sf::Event::Closed:
-						  quit = true;
-						  break;
-					  }
-				  }
-
-				  if (quit)
-					  break;
-
-				  renderWindow.draw(p);
-
-				  renderWindow.display();
+				  rt.getTexture().copyToImage().saveToFile("plot.png");
 			  }
 	}
 
