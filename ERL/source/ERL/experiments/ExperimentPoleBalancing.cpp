@@ -39,7 +39,7 @@ float ExperimentPoleBalancing::evaluate(erl::Field2DGenes &fieldGenes, const erl
 {
 	erl::Field2DCL field;
 
-	field.create(fieldGenes, cs, 32, 32, 2, 4, 1, 1, 1, randomImage, blurProgram, blurKernelX, blurKernelY, activationFunctions, activationFunctionNames, minInitRec, maxInitRec, generator, logger);
+	field.create(fieldGenes, cs, 16, 16, 3, 4, 1, 2, 2, randomImage, blurProgram, blurKernelX, blurKernelY, activationFunctions, activationFunctionNames, minInitRec, maxInitRec, generator, logger);
 
 	std::uniform_real_distribution<float> initPosDist(-1.0f, 1.0f);
 	std::uniform_real_distribution<float> initPoleVelDist(-0.05f, 0.05f);
@@ -62,14 +62,14 @@ float ExperimentPoleBalancing::evaluate(erl::Field2DGenes &fieldGenes, const erl
 	float cartFriction = 0.02f;
 	float maxSpeed = 3.0f;
 
-	float dt = 0.03f;
+	float dt = 0.017f;
 
 	float fitness = 0.0f;
 	float prevFitness = 0.0f;
 
 	float totalFitness = 0.0f;
 
-	for (size_t i = 0; i < 1800; i++) {
+	for (size_t i = 0; i < 1200; i++) {
 		//std::cout << "Step " << i << std::endl;
 
 		// Update fitness
@@ -97,7 +97,7 @@ float ExperimentPoleBalancing::evaluate(erl::Field2DGenes &fieldGenes, const erl
 		field.setInput(2, std::fmodf(poleAngle + static_cast<float>(std::_Pi), 2.0f * static_cast<float>(std::_Pi)));
 		field.setInput(3, poleAngleVel);
 
-		field.update(error, cs, activationFunctions, 16, generator);
+		field.update(error, cs, activationFunctions, 8, generator);
 
 		float dir = std::min<float>(1.0f, std::max<float>(-1.0f, field.getOutput(0)));
 

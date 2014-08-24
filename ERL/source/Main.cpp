@@ -210,6 +210,18 @@ int main() {
 
 			  std::shared_ptr<erl::Field2DEvolverSettings> settings(new erl::Field2DEvolverSettings());
 
+			  std::ifstream fromSettings("settings.txt");
+
+			  if (!fromSettings.is_open()) {
+				  std::cout << "Could not find \"settings.txt\"! Make sure the file exists. Exiting..." << std::endl;
+
+				  return 0;
+			  }
+
+			  settings->readFromStream(fromSettings);
+
+			  fromSettings.close();
+
 			  erl::EvolutionaryTrainer trainer;
 
 			  trainer.create(populationSize, settings.get(), functionChances, randomImage, blurProgram, blurKernelX, blurKernelY, functions, functionNames, -1.0f, 1.0f, generator);
@@ -311,6 +323,18 @@ int main() {
 
 			  std::shared_ptr<erl::Field2DEvolverSettings> settings(new erl::Field2DEvolverSettings());
 
+			  std::ifstream fromSettings("settings.txt");
+
+			  if (!fromSettings.is_open()) {
+				  std::cout << "Could not find \"settings.txt\"! Make sure the file exists. Exiting..." << std::endl;
+
+				  return 0;
+			  }
+
+			  settings->readFromStream(fromSettings);
+
+			  fromSettings.close();
+
 			  erl::Field2DGenes genes;
 
 			  std::ifstream fromFile("erlOutput.txt");
@@ -339,9 +363,9 @@ int main() {
 
 			  erl::Field2DCL field;
 
-			  float sizeScalar = 600.0f / 32.0f;
+			  float sizeScalar = 600.0f / 16.0f;
 
-			  field.create(genes, cs, 32, 32, 2, 4, 1, 1, 1, randomImage, blurProgram, blurKernelX, blurKernelY, functions, functionNames, -1.0f, 1.0f, generator, logger);
+			  field.create(genes, cs, 16, 16, 3, 4, 1, 1, 1, randomImage, blurProgram, blurKernelX, blurKernelY, functions, functionNames, -1.0f, 1.0f, generator, logger);
 
 			  sf::RenderWindow window;
 			  window.create(sf::VideoMode(1400, 600), "ERL Test", sf::Style::Default);
@@ -459,7 +483,7 @@ int main() {
 				  field.setInput(2, std::fmodf(poleAngle + static_cast<float>(std::_Pi), 2.0f * static_cast<float>(std::_Pi)));
 				  field.setInput(3, poleAngleVel);
 
-				  field.update(error, cs, functions, 16, generator);
+				  field.update(error, cs, functions, 8, generator);
 
 				  float dir = std::min<float>(1.0f, std::max<float>(-1.0f, field.getOutput(0)));
 
@@ -559,7 +583,7 @@ int main() {
 
 				  window.display();
 
-				  dt = clock.getElapsedTime().asSeconds();
+				  //dt = clock.getElapsedTime().asSeconds();
 			  } while (!quit);
 	}
 

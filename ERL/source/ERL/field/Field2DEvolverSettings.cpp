@@ -41,3 +41,45 @@ _mutateNodeOutputStrengthChance(0.05f),
 _nodeOutputStrengthPerturbationStdDev(0.4f),
 _nodeOutputStrengthDifferenceFactor(1.0f)
 {}
+
+void Field2DEvolverSettings::readFromStream(std::istream &is) {
+	std::string temp;
+
+	is >> temp >> _minInitWeight;
+	is >> temp >> _maxInitWeight;
+	is >> temp >> _updateCrossoverAverageChance;
+	is >> temp >> _neAddNodeChance;
+	is >> temp >> _neAddConnectionChance;
+	is >> temp >> _neWeightPerturbationChance;
+	is >> temp >> _neWeightPerturbationStdDev;
+	is >> temp >> _neChangeFunctionChance;
+	is >> temp >> _neWeightFactor;
+	is >> temp >> _neDisjointFactor;
+	is >> temp >> _addConnectionResponseChance;
+	is >> temp >> _addNodeOutputChance;
+	is >> temp >> _addGasChance;
+	is >> temp >> _connectionReponseDifferenceFactor;
+	is >> temp >> _nodeOutputSizeDifferenceFactor;
+	is >> temp >> _gasCountDifferenceFactor;
+	is >> temp >> _averageInitChance;
+	is >> temp >> _initPerturbationChance;
+	is >> temp >> _initPerturbationStdDev;
+	is >> temp >> _minInitInputStrengthScalar;
+	is >> temp >> _maxInitInputStrengthScalar;
+	is >> temp >> _averageInputStrengthScalarChance;
+	is >> temp >> _mutateInputStrengthChance;
+	is >> temp >> _inputStrengthPerturbationStdDev;
+	is >> temp >> _inputStrengthDifferenceFactor;
+	is >> temp >> _minInitConnectionStrengthScalar;
+	is >> temp >> _maxInitConnectionStrengthScalar;
+	is >> temp >> _averageConnectionStrengthScalarChance;
+	is >> temp >> _mutateConnectionStrengthChance;
+	is >> temp >> _connectionStrengthPerturbationStdDev;
+	is >> temp >> _connectionStrengthDifferenceFactor;
+	is >> temp >> _minInitNodeOutputStrengthScalar;
+	is >> temp >> _maxInitNodeOutputStrengthScalar;
+	is >> temp >> _averageNodeOutputStrengthScalarChance;
+	is >> temp >> _mutateNodeOutputStrengthChance;
+	is >> temp >> _nodeOutputStrengthPerturbationStdDev;
+	is >> temp >> _nodeOutputStrengthDifferenceFactor;
+}

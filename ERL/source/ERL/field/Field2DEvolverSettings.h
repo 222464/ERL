@@ -6,6 +6,9 @@ Field2DEvolverSettings
 
 #pragma once
 
+#include <istream>
+#include <string>
+
 namespace erl {
 	class Field2DEvolverSettings {
 	public:
@@ -56,5 +59,7 @@ namespace erl {
 		float _nodeOutputStrengthDifferenceFactor;
 
 		Field2DEvolverSettings();
+
+		void readFromStream(std::istream &is);
 	};
 }

@@ -8,7 +8,7 @@
 
 -- Generate the field
 
-local handle = generatePhenotype(16, 16, 3, 4, 1, 2, 2)
+local handle = generatePhenotype(16, 16, 3, 4, 1, 1, 1)
 
 local pixelsPerMeter = 128.0
 local poleLength = 1.0
