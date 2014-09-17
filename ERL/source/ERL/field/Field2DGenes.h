@@ -21,6 +21,7 @@ namespace erl {
 		int _connectionResponseSize;
 		int _nodeOutputSize;
 		int _numGases;
+		int _typeSize;
 
 		float _inputStrengthScalar;
 		float _nodeOutputStrengthScalar;
@@ -68,6 +69,10 @@ namespace erl {
 
 		int getNumGases() const {
 			return _numGases;
+		}
+
+		int getTypeSize() const {
+			return _typeSize;
 		}
 
 		float getInputStrengthScalar() const {

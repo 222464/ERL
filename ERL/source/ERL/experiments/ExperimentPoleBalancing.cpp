@@ -39,7 +39,7 @@ float ExperimentPoleBalancing::evaluate(erl::Field2DGenes &fieldGenes, const erl
 {
 	erl::Field2DCL field;
 
-	field.create(fieldGenes, cs, 16, 16, 3, 4, 1, 2, 2, randomImage, blurProgram, blurKernelX, blurKernelY, activationFunctions, activationFunctionNames, minInitRec, maxInitRec, generator, logger);
+	field.create(fieldGenes, cs, 16, 16, 3, 4, 1, 1, 1, randomImage, blurProgram, blurKernelX, blurKernelY, activationFunctions, activationFunctionNames, minInitRec, maxInitRec, generator, logger);
 
 	std::uniform_real_distribution<float> initPosDist(-1.0f, 1.0f);
 	std::uniform_real_distribution<float> initPoleVelDist(-0.05f, 0.05f);

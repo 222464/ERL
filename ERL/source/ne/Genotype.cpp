@@ -329,6 +329,8 @@ void Genotype::createFromParents(const Genotype &parent0, const Genotype &parent
 			it1++;
 		}
 	}
+
+	calculateOutgoingConnections();
 }
 
 void Genotype::mutate(float addNodeChance, float addConnectionChance, float minWeight, float maxWeight, float perturbationChance, float perturbationStdDev, float changeFunctionChance, const std::vector<float> &functionChances, std::mt19937 &generator) {
@@ -353,6 +355,8 @@ void Genotype::mutate(float addNodeChance, float addConnectionChance, float minW
 
 	if (dist01(generator) < addConnectionChance)
 		addConnection(minWeight, maxWeight, generator);
+
+	calculateOutgoingConnections();
 }
 
 float Genotype::getDifference(const Genotype &genotype0, const Genotype &genotype1, float weightFactor, float disjointFactor, const std::unordered_map<FunctionPair, float, FunctionPair> &functionFactors) {
@@ -471,8 +475,29 @@ void Genotype::setNumOutputsFeedForward(size_t numOutputs, float minWeight, floa
 		addOutputFeedForward(minWeight, maxWeight, functionChances, generator);
 }
 
+void Genotype::calculateOutgoingConnections() {
+	// Calculate outgoing connections
+	for (std::unordered_map<size_t, std::shared_ptr<Node>>::iterator it0 = _nodes.begin(); it0 != _nodes.end(); it0++)
+		it0->second->_outputNodes.clear();
+
+	for (std::unordered_map<size_t, std::shared_ptr<Node>>::iterator it0 = _nodes.begin(); it0 != _nodes.end(); it0++)
+	for (std::unordered_map<size_t, float>::iterator it1 = it0->second->_connections.begin(); it1 != it0->second->_connections.end();) {
+		std::unordered_map<size_t, std::shared_ptr<Node>>::iterator it2 = _nodes.find(it1->first);
+
+		if (it2 == _nodes.end())
+			it1 = it0->second->_connections.erase(it1);
+		else {
+			it2->second->_outputNodes.insert(it0->first);
+
+			it1++;
+		}
+	}
+}
+
 void Genotype::readFromStream(std::istream &is) {
 	_nodes.clear();
+
+	_nextNodeID = 0;
 
 	int numNodes;
 
@@ -496,6 +521,8 @@ void Genotype::readFromStream(std::istream &is) {
 		}
 
 		_nodes[nodeID] = newNode;
+
+		_nextNodeID = std::max<int>(_nextNodeID, nodeID) + 1;
 	}
 
 	int numInputNodes;
@@ -521,19 +548,7 @@ void Genotype::readFromStream(std::istream &is) {
 	for (std::unordered_map<size_t, float>::iterator it1 = it0->second->_connections.begin(); it1 != it0->second->_connections.end(); it1++)
 		_nodes[it1->first]->_outputNodes.insert(it0->first);*/
 
-	// Calculate outgoing connections
-	for (std::unordered_map<size_t, std::shared_ptr<Node>>::iterator it0 = _nodes.begin(); it0 != _nodes.end(); it0++)
-	for (std::unordered_map<size_t, float>::iterator it1 = it0->second->_connections.begin(); it1 != it0->second->_connections.end();) {
-		std::unordered_map<size_t, std::shared_ptr<Node>>::iterator it2 = _nodes.find(it1->first);
-
-		if (it2 == _nodes.end())
-			it1 = it0->second->_connections.erase(it1);
-		else {
-			_nodes[it1->first]->_outputNodes.insert(it0->first);
-
-			it1++;
-		}
-	} 
+	calculateOutgoingConnections();
 }
 
 void Genotype::writeToStream(std::ostream &os) const {

@@ -8,7 +8,7 @@
 
 -- Generate the field
 
-local handle = generatePhenotype(16, 16, 3, 4, 1, 1, 1)
+local handle = generatePhenotype(32, 32, 3, 4, 1, 1, 1)
 
 local pixelsPerMeter = 128.0
 local poleLength = 1.0
@@ -35,7 +35,7 @@ local prevFitness = 0.0
 
 local totalFitness = 0.0
 
-for i = 1, 1200, 1 do
+for i = 1, 900, 1 do
 	-- Update fitness
 	prevFitness = fitness
 

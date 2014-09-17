@@ -24,6 +24,7 @@ void Field2DCL::create(Field2DGenes &genes, ComputeSystem &cs, int width, int he
 	_currentWriteBufferIndex = 1;
 
 	_numGases = genes._numGases;
+	_typeSize = genes._typeSize;
 
 	_randomImage = randomImage;
 
@@ -58,7 +59,7 @@ void Field2DCL::create(Field2DGenes &genes, ComputeSystem &cs, int width, int he
 	_connectionDimensionSize = 2 * _connectionRadius + 1;
 	_numConnections = _connectionDimensionSize * _connectionDimensionSize;
 
-	_nodeSize = genes.getNodeOutputSize() + 1 + _nodePhenotype.getRecurrentDataSize(); // + 1 for type
+	_nodeSize = genes.getNodeOutputSize() + _typeSize + _nodePhenotype.getRecurrentDataSize();
 	_connectionSize = _connectionPhenotype.getRecurrentDataSize();
 	_nodeAndConnectionsSize = _nodeSize + _connectionSize * _numConnections;
 
@@ -113,14 +114,15 @@ void Field2DCL::create(Field2DGenes &genes, ComputeSystem &cs, int width, int he
 			buffer[bufferIndex++] = 0.0f;
 
 		std::vector<float> inputs(2);
-		std::vector<float> outputs(1);
+		std::vector<float> outputs(_typeSize);
 
 		inputs[0] = xCoord;
 		inputs[1] = yCoord;
 		
 		typePhenotype.execute(inputs, outputs, typeSetRecurrentData, activationFunctions);
 
-		buffer[bufferIndex++] = outputs[0];
+		for (int ti = 0; ti < _typeSize; ti++)
+			buffer[bufferIndex++] = outputs[ti];
 
 		// Initialize recurrent data
 		for (int ri = 0; ri < _nodePhenotype.getRecurrentDataSize(); ri++) {

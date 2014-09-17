@@ -5,14 +5,14 @@
 using namespace erl;
 
 void Field2DGenes::setInputOutputCounts(const Field2DEvolverSettings* pSettings, const std::vector<float> &functionChances, std::mt19937 &generator) {
-	_connectionUpdateGenotype.setNumInputsFeedForward(_nodeOutputSize + 6, pSettings->_minInitWeight, pSettings->_maxInitWeight, functionChances, generator);
+	_connectionUpdateGenotype.setNumInputsFeedForward(_nodeOutputSize + 4 + _typeSize * 2, pSettings->_minInitWeight, pSettings->_maxInitWeight, functionChances, generator);
 	_connectionUpdateGenotype.setNumOutputsFeedForward(_connectionResponseSize, pSettings->_minInitWeight, pSettings->_maxInitWeight, functionChances, generator);
 
-	_activationUpdateGenotype.setNumInputsFeedForward(_connectionResponseSize + 3 + _numGases, pSettings->_minInitWeight, pSettings->_maxInitWeight, functionChances, generator);
+	_activationUpdateGenotype.setNumInputsFeedForward(_connectionResponseSize + 2 + _numGases + _typeSize, pSettings->_minInitWeight, pSettings->_maxInitWeight, functionChances, generator);
 	_activationUpdateGenotype.setNumOutputsFeedForward(_nodeOutputSize + _numGases, pSettings->_minInitWeight, pSettings->_maxInitWeight, functionChances, generator);
 
 	_typeSetGenotype.setNumInputsFeedForward(2, pSettings->_minInitWeight, pSettings->_maxInitWeight, functionChances, generator);
-	_typeSetGenotype.setNumOutputsFeedForward(1, pSettings->_minInitWeight, pSettings->_maxInitWeight, functionChances, generator);
+	_typeSetGenotype.setNumOutputsFeedForward(_typeSize, pSettings->_minInitWeight, pSettings->_maxInitWeight, functionChances, generator);
 
 	_encoderGenotype.setNumInputsFeedForward(1, pSettings->_minInitWeight, pSettings->_maxInitWeight, functionChances, generator);
 	_encoderGenotype.setNumOutputsFeedForward(_connectionResponseSize, pSettings->_minInitWeight, pSettings->_maxInitWeight, functionChances, generator);
@@ -27,6 +27,7 @@ void Field2DGenes::initialize(const Field2DEvolverSettings* pSettings, const std
 	_connectionResponseSize = 1;
 	_nodeOutputSize = 1;
 	_numGases = 1;
+	_typeSize = 1;
 
 	std::uniform_real_distribution<float> inputStrengthScalarDist(pF2DSettings->_minInitInputStrengthScalar, pF2DSettings->_maxInitInputStrengthScalar);
 	std::uniform_real_distribution<float> connectionStrengthScalarDist(pF2DSettings->_minInitConnectionStrengthScalar, pF2DSettings->_maxInitConnectionStrengthScalar);
@@ -36,10 +37,11 @@ void Field2DGenes::initialize(const Field2DEvolverSettings* pSettings, const std
 	_connectionStrengthScalar = connectionStrengthScalarDist(generator);
 	_nodeOutputStrengthScalar = nodeOutputStrengthScalarDist(generator);
 
-	// + 3 is for type, random, and reward inputs. + 6 is 1 additional type as well as delta position for connections
-	_connectionUpdateGenotype.createRandomFeedForward(_nodeOutputSize + 6, _connectionResponseSize, pSettings->_minInitWeight, pSettings->_maxInitWeight, functionChances, generator);
-	_activationUpdateGenotype.createRandomFeedForward(_connectionResponseSize + 3 + _numGases, _nodeOutputSize + _numGases, pSettings->_minInitWeight, pSettings->_maxInitWeight, functionChances, generator);
-	_typeSetGenotype.createRandomFeedForward(2, 1, pSettings->_minInitWeight, pSettings->_maxInitWeight, functionChances, generator);
+	// + 4 is for random, reward, and delta position inputs
+	// + 2 is for random and reward inputs
+	_connectionUpdateGenotype.createRandomFeedForward(_nodeOutputSize + 4 + _typeSize * 2, _connectionResponseSize, pSettings->_minInitWeight, pSettings->_maxInitWeight, functionChances, generator);
+	_activationUpdateGenotype.createRandomFeedForward(_connectionResponseSize + 2 + _numGases + _typeSize, _nodeOutputSize + _numGases, pSettings->_minInitWeight, pSettings->_maxInitWeight, functionChances, generator);
+	_typeSetGenotype.createRandomFeedForward(2, _typeSize, pSettings->_minInitWeight, pSettings->_maxInitWeight, functionChances, generator);
 	_encoderGenotype.createRandomFeedForward(1, _connectionResponseSize, pSettings->_minInitWeight, pSettings->_maxInitWeight, functionChances, generator);
 	_decoderGenotype.createRandomFeedForward(_nodeOutputSize, 1, pSettings->_minInitWeight, pSettings->_maxInitWeight, functionChances, generator);
 
@@ -53,6 +55,7 @@ void Field2DGenes::crossover(const Field2DEvolverSettings* pSettings, const std:
 	_connectionResponseSize = dist01(generator) < 0.5f ? pParent1->_connectionResponseSize : pParent2->_connectionResponseSize;
 	_nodeOutputSize = dist01(generator) < 0.5f ? pParent1->_nodeOutputSize : pParent2->_nodeOutputSize;
 	_numGases = dist01(generator) < 0.5f ? pParent1->_numGases : pParent2->_numGases;
+	_typeSize = dist01(generator) < 0.5f ? pParent1->_typeSize : pParent2->_typeSize;
 
 	_inputStrengthScalar = dist01(generator) < pSettings->_averageInputStrengthScalarChance ? (pParent1->_inputStrengthScalar + pParent2->_inputStrengthScalar) * 0.5f : (dist01(generator) < 0.5f ? pParent1->_inputStrengthScalar : pParent2->_inputStrengthScalar);
 	_connectionStrengthScalar = dist01(generator) < pSettings->_averageConnectionStrengthScalarChance ? (pParent1->_connectionStrengthScalar + pParent2->_connectionStrengthScalar) * 0.5f : (dist01(generator) < 0.5f ? pParent1->_connectionStrengthScalar : pParent2->_connectionStrengthScalar);
@@ -123,6 +126,9 @@ void Field2DGenes::mutate(const Field2DEvolverSettings* pSettings, const std::ve
 	if (dist01(generator) < pF2DSettings->_addGasChance)
 		_numGases++;
 
+	if (dist01(generator) < pF2DSettings->_addTypeChance)
+		_typeSize++;
+
 	if (dist01(generator) < pF2DSettings->_mutateInputStrengthChance) {
 		std::normal_distribution<float> inputStrengthPertDist(0.0f, pF2DSettings->_inputStrengthPerturbationStdDev);
 
@@ -187,7 +193,7 @@ float Field2DGenes::getSimilarity(const Field2DEvolverSettings* pSettings, const
 }
 
 void Field2DGenes::readFromStream(std::istream &is) {
-	is >> _connectionResponseSize >> _nodeOutputSize >> _numGases;
+	is >> _connectionResponseSize >> _nodeOutputSize >> _numGases >> _typeSize;
 	is >> _inputStrengthScalar >> _connectionStrengthScalar >> _nodeOutputStrengthScalar;
 
 	int numRecurrentNode;
@@ -218,7 +224,7 @@ void Field2DGenes::readFromStream(std::istream &is) {
 }
 
 void Field2DGenes::writeToStream(std::ostream &os) const {
-	os << _connectionResponseSize << " " << _nodeOutputSize << " " << _numGases << std::endl;
+	os << _connectionResponseSize << " " << _nodeOutputSize << " " << _numGases << " " << _typeSize << std::endl;
 	os << _inputStrengthScalar << " " << _connectionStrengthScalar << " " << _nodeOutputStrengthScalar << std::endl;
 
 	os << _recurrentNodeInitBounds.size() << " " << _recurrentConnectionInitBounds.size() << std::endl;
@@ -233,7 +239,7 @@ void Field2DGenes::writeToStream(std::ostream &os) const {
 		os << std::get<0>(_recurrentConnectionInitBounds[i]) << " " << std::get<1>(_recurrentConnectionInitBounds[i]) << " ";
 	}
 
-	os << std::endl << std::endl;;
+	os << std::endl << std::endl;
 
 	_connectionUpdateGenotype.writeToStream(os);
 	os << std::endl;

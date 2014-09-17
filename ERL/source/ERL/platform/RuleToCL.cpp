@@ -18,11 +18,15 @@ struct ConnectionDesc {
 };
 
 std::string getOutputNodeString(ne::Phenotype &phenotype, const std::vector<std::vector<size_t>> &outgoingConnectionsInput, const std::vector<std::vector<size_t>> &outgoingConnectionsRecurrentIntermediate, std::unordered_set<ConnectionDesc, ConnectionDesc> &data,
-	const std::vector<std::string> &functionNames, int nodeIndex);
+	const std::vector<std::string> &functionNames, std::vector<bool> &calculatedIntermediates, int nodeIndex);
 
-void floodForwardFindCalculateIntermediates(ne::Phenotype &phenotype, const std::vector<std::vector<size_t>> &outgoingConnectionsInput, const std::vector<std::vector<size_t>> &outgoingConnectionsRecurrentIntermediate, std::unordered_set<ConnectionDesc, ConnectionDesc> &data,
-	const std::vector<std::string> &functionNames, int nodeIndex, std::vector<bool> &calculatedIntermediates, std::string &outputCode)
+void floodForwardCalculateIntermediates(std::list<int> &openList, ne::Phenotype &phenotype, const std::vector<std::vector<size_t>> &outgoingConnectionsInput, const std::vector<std::vector<size_t>> &outgoingConnectionsRecurrentIntermediate, std::unordered_set<ConnectionDesc, ConnectionDesc> &data,
+	const std::vector<std::string> &functionNames, std::vector<bool> &calculatedIntermediates, std::string &outputCode)
 {
+	int nodeIndex = openList.front();
+
+	openList.pop_front();
+
 	// If is intermediate, compute it
 	if (nodeIndex >= 0) {
 		std::shared_ptr<ne::Phenotype::Node> neuron = phenotype.getNodes()[nodeIndex];
@@ -53,7 +57,7 @@ void floodForwardFindCalculateIntermediates(ne::Phenotype &phenotype, const std:
 					std::unordered_set<ConnectionDesc, ConnectionDesc>::iterator it = data.find(cd);
 
 					if (it == data.end()) // Not recurrent connection
-						outputCode += std::to_string(neuron->_connections[i]._weight) + "f * " + getOutputNodeString(phenotype, outgoingConnectionsInput, outgoingConnectionsRecurrentIntermediate, data, functionNames, neuron->_connections[i]._fetchType == ne::Phenotype::_input ? -static_cast<int>(neuron->_connections[i]._fetchIndex) - 1 : neuron->_connections[i]._fetchIndex);
+						outputCode += std::to_string(neuron->_connections[i]._weight) + "f * " + getOutputNodeString(phenotype, outgoingConnectionsInput, outgoingConnectionsRecurrentIntermediate, data, functionNames, calculatedIntermediates, neuron->_connections[i]._fetchType == ne::Phenotype::_input ? -static_cast<int>(neuron->_connections[i]._fetchIndex) - 1 : neuron->_connections[i]._fetchIndex);
 					else
 						outputCode += std::to_string(neuron->_connections[i]._weight) + "f * (*recurrent" + std::to_string(neuron->_connections[i]._fetchIndex) + ")";
 
@@ -77,19 +81,19 @@ void floodForwardFindCalculateIntermediates(ne::Phenotype &phenotype, const std:
 			cd._outIndex = outgoingConnectionsRecurrentIntermediate[nodeIndex][i];
 
 			if (data.find(cd) == data.end())
-				floodForwardFindCalculateIntermediates(phenotype, outgoingConnectionsInput, outgoingConnectionsRecurrentIntermediate, data, functionNames, outgoingConnectionsRecurrentIntermediate[nodeIndex][i], calculatedIntermediates, outputCode);
+				openList.push_back(outgoingConnectionsRecurrentIntermediate[nodeIndex][i]);
 		}
 	}
 	else {
 		size_t inputIndex = -nodeIndex - 1;
 
 		for (size_t i = 0; i < outgoingConnectionsInput[inputIndex].size(); i++)
-			floodForwardFindCalculateIntermediates(phenotype, outgoingConnectionsInput, outgoingConnectionsRecurrentIntermediate, data, functionNames, outgoingConnectionsInput[inputIndex][i], calculatedIntermediates, outputCode);
+			openList.push_back(outgoingConnectionsInput[inputIndex][i]);
 	}
 }
 
 std::string getOutputNodeString(ne::Phenotype &phenotype, const std::vector<std::vector<size_t>> &outgoingConnectionsInput, const std::vector<std::vector<size_t>> &outgoingConnectionsRecurrentIntermediate, std::unordered_set<ConnectionDesc, ConnectionDesc> &data,
-	const std::vector<std::string> &functionNames, int nodeIndex)
+	const std::vector<std::string> &functionNames, std::vector<bool> &calculatedIntermediates, int nodeIndex)
 {
 	if (nodeIndex < 0)
 		return "input" + std::to_string(-nodeIndex - 1);
@@ -107,7 +111,7 @@ std::string getOutputNodeString(ne::Phenotype &phenotype, const std::vector<std:
 	}
 
 	// If needs intermediate storage
-	if (numNonRecurrentOutgoingConnections >= 2)
+	if (numNonRecurrentOutgoingConnections >= 2 && calculatedIntermediates[nodeIndex])
 		return "intermediate" + std::to_string(nodeIndex);
 
 	std::shared_ptr<ne::Phenotype::Node> neuron = phenotype.getNodes()[nodeIndex];
@@ -122,7 +126,7 @@ std::string getOutputNodeString(ne::Phenotype &phenotype, const std::vector<std:
 		std::unordered_set<ConnectionDesc, ConnectionDesc>::iterator it = data.find(cd);
 
 		if (it == data.end()) // Not recurrent connection
-			sub += std::to_string(neuron->_connections[i]._weight) + "f * " + getOutputNodeString(phenotype, outgoingConnectionsInput, outgoingConnectionsRecurrentIntermediate, data, functionNames, neuron->_connections[i]._fetchType == ne::Phenotype::_input ? -static_cast<int>(neuron->_connections[i]._fetchIndex) - 1 : neuron->_connections[i]._fetchIndex);
+			sub += std::to_string(neuron->_connections[i]._weight) + "f * " + getOutputNodeString(phenotype, outgoingConnectionsInput, outgoingConnectionsRecurrentIntermediate, data, functionNames, calculatedIntermediates, neuron->_connections[i]._fetchType == ne::Phenotype::_input ? -static_cast<int>(neuron->_connections[i]._fetchIndex) - 1 : neuron->_connections[i]._fetchIndex);
 		else
 			sub += std::to_string(neuron->_connections[i]._weight) + "f * (*recurrent" + std::to_string(neuron->_connections[i]._fetchIndex) + ")";
 
@@ -225,21 +229,37 @@ std::string erl::ruleToCL(ne::Phenotype &phenotype,
 	std::vector<bool> calculatedIntermediates(numNodes, false);
 
 	// Compute all intermediates
-	for (size_t i = 0; i < phenotype.getNumInputs(); i++)
-		floodForwardFindCalculateIntermediates(phenotype, outgoingConnectionsInput, outgoingConnectionsRecurrentIntermediate, data, functionNames, -static_cast<int>(i) - 1, calculatedIntermediates, code);
+	for (size_t i = 0; i < phenotype.getNumInputs(); i++) {
+		int startIndex = -static_cast<int>(i)-1;
+
+		std::list<int> openList;
+
+		openList.push_back(startIndex);
+
+		while (!openList.empty())
+			floodForwardCalculateIntermediates(openList, phenotype, outgoingConnectionsInput, outgoingConnectionsRecurrentIntermediate, data, functionNames, calculatedIntermediates, code);
+	}
 
 	for (size_t i = 0; i < numNodes; i++)
-	if (phenotype.getNodes()[i]->_connections.empty())
-		floodForwardFindCalculateIntermediates(phenotype, outgoingConnectionsInput, outgoingConnectionsRecurrentIntermediate, data, functionNames, i, calculatedIntermediates, code);
+	if (phenotype.getNodes()[i]->_connections.empty()) {
+		int startIndex = i;
+
+		std::list<int> openList;
+
+		openList.push_back(startIndex);
+
+		while (!openList.empty())
+			floodForwardCalculateIntermediates(openList, phenotype, outgoingConnectionsInput, outgoingConnectionsRecurrentIntermediate, data, functionNames, calculatedIntermediates, code);
+	}
 
 	// Compute all outputs
 	for (size_t i = 0; i < phenotype.getNumOutputs(); i++) {
-		code += "	(*output" + std::to_string(i) + ") = " + getOutputNodeString(phenotype, outgoingConnectionsInput, outgoingConnectionsRecurrentIntermediate, data, functionNames, i) + ";\n";
+		code += "	(*output" + std::to_string(i) + ") = " + getOutputNodeString(phenotype, outgoingConnectionsInput, outgoingConnectionsRecurrentIntermediate, data, functionNames, calculatedIntermediates, i) + ";\n";
 	}
 
 	// Update recurrents
 	for (size_t i = 0; i < phenotype.getRecurrentNodeIndices().size(); i++) {
-		code += "	(*recurrent" + std::to_string(phenotype.getRecurrentNodeIndices()[i]) + ") = " + getOutputNodeString(phenotype, outgoingConnectionsInput, outgoingConnectionsRecurrentIntermediate, data, functionNames, phenotype.getRecurrentNodeIndices()[i]) + ";\n";
+		code += "	(*recurrent" + std::to_string(phenotype.getRecurrentNodeIndices()[i]) + ") = " + getOutputNodeString(phenotype, outgoingConnectionsInput, outgoingConnectionsRecurrentIntermediate, data, functionNames, calculatedIntermediates, phenotype.getRecurrentNodeIndices()[i]) + ";\n";
 	}
 
 	code += "}\n";

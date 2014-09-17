@@ -30,6 +30,7 @@ namespace erl {
 		//std::function<cl::Event(const cl::EnqueueArgs&, cl::Buffer&, cl::Buffer&, cl::Image2D&, cl::Image1D&, cl::Image1D&, cl::Image2D&, RandomSeed, float)> _kernelFunctor;
 
 		int _numGases;
+		int _typeSize;
 
 		unsigned char _currentReadBufferIndex;
 		unsigned char _currentWriteBufferIndex;
@@ -108,6 +109,10 @@ namespace erl {
 
 		int getNumGases() const {
 			return _numGases;
+		}
+
+		int getTypeSize() const {
+			return _typeSize;
 		}
 
 		int getWidth() const {

@@ -3,22 +3,24 @@
 using namespace erl;
 
 Field2DEvolverSettings::Field2DEvolverSettings()
-: _minInitWeight(-0.75f),
-_maxInitWeight(0.75f),
+: _minInitWeight(-0.1f),
+_maxInitWeight(0.1f),
 _updateCrossoverAverageChance(0.1f),
 _neAddNodeChance(0.1f),
 _neAddConnectionChance(0.2f),
-_neWeightPerturbationChance(0.1f),
-_neWeightPerturbationStdDev(0.075f),
+_neWeightPerturbationChance(0.15f),
+_neWeightPerturbationStdDev(0.02f),
 _neChangeFunctionChance(0.04f),
 _neWeightFactor(0.5f),
 _neDisjointFactor(1.0f),
 _addConnectionResponseChance(0.04f),
 _addNodeOutputChance(0.04f),
 _addGasChance(0.05f),
+_addTypeChance(0.05f),
 _connectionReponseDifferenceFactor(5.0f),
 _nodeOutputSizeDifferenceFactor(5.0f),
 _gasCountDifferenceFactor(5.0f),
+_typeSizeDifferenceFactor(5.0f),
 _averageInitChance(0.1f),
 _initPerturbationChance(0.05f),
 _initPerturbationStdDev(0.025f),
@@ -58,9 +60,11 @@ void Field2DEvolverSettings::readFromStream(std::istream &is) {
 	is >> temp >> _addConnectionResponseChance;
 	is >> temp >> _addNodeOutputChance;
 	is >> temp >> _addGasChance;
+	is >> temp >> _addTypeChance;
 	is >> temp >> _connectionReponseDifferenceFactor;
 	is >> temp >> _nodeOutputSizeDifferenceFactor;
 	is >> temp >> _gasCountDifferenceFactor;
+	is >> temp >> _typeSizeDifferenceFactor;
 	is >> temp >> _averageInitChance;
 	is >> temp >> _initPerturbationChance;
 	is >> temp >> _initPerturbationStdDev;

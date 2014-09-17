@@ -44,11 +44,11 @@ int main() {
 	functionChances[1] = 1.0f;
 	functionChances[2] = 1.0f;
 
-	functionNames[0] = "sigmoid";
+	functionNames[0] = "scaledSigmoid";
 	functionNames[1] = "sin";
 	functionNames[2] = "linear";
 
-	functions[0] = std::bind([](float x) { return 1.0f / (1.0f + std::exp(-x)); }, std::placeholders::_1);
+	functions[0] = std::bind([](float x) { return 2.0f / (1.0f + std::exp(-x)) - 1.0f; }, std::placeholders::_1);
 	functions[1] = std::bind(std::sinf, std::placeholders::_1);
 	functions[2] = std::bind([](float x) { return std::min<float>(2.0f, std::max<float>(-2.0f, x)); }, std::placeholders::_1);
 
@@ -99,7 +99,7 @@ int main() {
 
 	std::cout << "Select option:" << std::endl;
 	std::cout << "(1) - Train ERL" << std::endl;
-	std::cout << "(2) - Visualize ERL (Pole Balacing)" << std::endl;
+	std::cout << "(2) - Visualize ERL (Pole Balancing)" << std::endl;
 	std::cout << "(3) - Exit" << std::endl;
 	std::cout << ">";
 

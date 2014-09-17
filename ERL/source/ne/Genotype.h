@@ -93,6 +93,8 @@ namespace ne {
 		void setNumInputsFeedForward(size_t numInputs, float minWeight, float maxWeight, const std::vector<float> &functionChances, std::mt19937 &generator, RemoveMethod removalMethod = _last);
 		void setNumOutputsFeedForward(size_t numOutputs, float minWeight, float maxWeight, const std::vector<float> &functionChances, std::mt19937 &generator, RemoveMethod removalMethod = _last);
 
+		void calculateOutgoingConnections();
+
 		void readFromStream(std::istream &is);
 		void writeToStream(std::ostream &os) const;
 

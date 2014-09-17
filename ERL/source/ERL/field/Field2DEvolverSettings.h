@@ -28,10 +28,12 @@ namespace erl {
 		float _addConnectionResponseChance;
 		float _addNodeOutputChance;
 		float _addGasChance;
+		float _addTypeChance;
 
 		float _connectionReponseDifferenceFactor;
 		float _nodeOutputSizeDifferenceFactor;
 		float _gasCountDifferenceFactor;
+		float _typeSizeDifferenceFactor;
 
 		float _averageInitChance;
 		float _initPerturbationChance;
