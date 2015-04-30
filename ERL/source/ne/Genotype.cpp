@@ -25,20 +25,6 @@ size_t ne::roulette(const std::vector<float> &chances, std::mt19937 &generator) 
 	return 0;
 }
 
-const Genotype &Genotype::operator=(const Genotype &other) {
-	_nodes.clear();
-
-	_inputNodeIDs = other._inputNodeIDs;
-	_outputNodeIDs = other._outputNodeIDs;
-
-	for (std::unordered_map<size_t, std::shared_ptr<Node>>::const_iterator cit0 = other._nodes.begin(); cit0 != other._nodes.end(); cit0++)
-		_nodes[cit0->first] = std::shared_ptr<Node>(new Node(*cit0->second));
-
-	_nextNodeID = other._nextNodeID;
-
-	return *this;
-}
-
 float Genotype::getDifference(const Genotype &genotype0, const Genotype &genotype1, size_t node0ID, size_t node1ID, int searchDepth, float importanceDecay, float weightFactor, float disjointFactor, const std::unordered_map<FunctionPair, float, FunctionPair> &functionFactors, std::unordered_set<size_t> &visitedNodeIDs) {
 	int disjointConnections0 = 0;
 	int disjointConnections1 = 0;
@@ -203,7 +189,7 @@ void Genotype::addConnection(float minWeight, float maxWeight, std::mt19937 &gen
 	if (inputNodeIDSet.find(cit0->first) != inputNodeIDSet.end() || cit0->second->_connections.size() >= _nodes.size())
 		numFullyConnected++;
 
-	if (numFullyConnected == _nodes.size())
+	if (numFullyConnected >= _nodes.size())
 		return;
 
 	// Select random node that is not an input and isn't fully connected
@@ -266,9 +252,7 @@ void Genotype::createFromParents(const Genotype &parent0, const Genotype &parent
 			std::shared_ptr<Node> node1 = parent1._nodes.at(*nIDIt1);
 
 			// Merge these nodes
-			assert(*nIDIt0 == *nIDIt1);
-
-			size_t ID = *nIDIt0;
+			size_t ID = std::max(*nIDIt0, *nIDIt1);
 
 			std::shared_ptr<Node> child = std::make_shared<Node>();
 
@@ -330,21 +314,28 @@ void Genotype::createFromParents(const Genotype &parent0, const Genotype &parent
 		}
 	}
 
-	calculateOutgoingConnections();
+	if (dist01(generator) < 0.5f) {
+		_outputNodeIDs = parent0._outputNodeIDs;
+		_inputNodeIDs = parent0._inputNodeIDs;
+	}
+	else {
+		_outputNodeIDs = parent1._outputNodeIDs;
+		_inputNodeIDs = parent1._inputNodeIDs;
+	}
 }
 
-void Genotype::mutate(float addNodeChance, float addConnectionChance, float minWeight, float maxWeight, float perturbationChance, float perturbationStdDev, float changeFunctionChance, const std::vector<float> &functionChances, std::mt19937 &generator) {
+void Genotype::mutate(float addNodeChance, float addConnectionChance, float minWeight, float maxWeight, float perturbationChance, float maxPerturbation, float changeFunctionChance, const std::vector<float> &functionChances, std::mt19937 &generator) {
 	std::uniform_real_distribution<float> dist01(0.0f, 1.0f);
-	std::normal_distribution<float> distPerturbation(0.0f, perturbationStdDev);
+	std::uniform_real_distribution<float> perturbationDist(-maxPerturbation, maxPerturbation);
 	
 	// Mutate existing connections
 	for (std::unordered_map<size_t, std::shared_ptr<Node>>::iterator it0 = _nodes.begin(); it0 != _nodes.end(); it0++) {
 		for (std::unordered_map<size_t, float>::iterator it1 = it0->second->_connections.begin(); it1 != it0->second->_connections.end(); it1++)
 		if (dist01(generator) < perturbationChance)
-			it1->second += distPerturbation(generator);
+			it1->second += perturbationDist(generator);
 
 		if (dist01(generator) < perturbationChance)
-			it0->second->_bias += distPerturbation(generator);
+			it0->second->_bias += perturbationDist(generator);
 
 		if (dist01(generator) < changeFunctionChance)
 			it0->second->_functionIndex = roulette(functionChances, generator);
@@ -355,8 +346,6 @@ void Genotype::mutate(float addNodeChance, float addConnectionChance, float minW
 
 	if (dist01(generator) < addConnectionChance)
 		addConnection(minWeight, maxWeight, generator);
-
-	calculateOutgoingConnections();
 }
 
 float Genotype::getDifference(const Genotype &genotype0, const Genotype &genotype1, float weightFactor, float disjointFactor, const std::unordered_map<FunctionPair, float, FunctionPair> &functionFactors) {
@@ -475,29 +464,8 @@ void Genotype::setNumOutputsFeedForward(size_t numOutputs, float minWeight, floa
 		addOutputFeedForward(minWeight, maxWeight, functionChances, generator);
 }
 
-void Genotype::calculateOutgoingConnections() {
-	// Calculate outgoing connections
-	for (std::unordered_map<size_t, std::shared_ptr<Node>>::iterator it0 = _nodes.begin(); it0 != _nodes.end(); it0++)
-		it0->second->_outputNodes.clear();
-
-	for (std::unordered_map<size_t, std::shared_ptr<Node>>::iterator it0 = _nodes.begin(); it0 != _nodes.end(); it0++)
-	for (std::unordered_map<size_t, float>::iterator it1 = it0->second->_connections.begin(); it1 != it0->second->_connections.end();) {
-		std::unordered_map<size_t, std::shared_ptr<Node>>::iterator it2 = _nodes.find(it1->first);
-
-		if (it2 == _nodes.end())
-			it1 = it0->second->_connections.erase(it1);
-		else {
-			it2->second->_outputNodes.insert(it0->first);
-
-			it1++;
-		}
-	}
-}
-
 void Genotype::readFromStream(std::istream &is) {
 	_nodes.clear();
-
-	_nextNodeID = 0;
 
 	int numNodes;
 
@@ -521,8 +489,6 @@ void Genotype::readFromStream(std::istream &is) {
 		}
 
 		_nodes[nodeID] = newNode;
-
-		_nextNodeID = std::max<int>(_nextNodeID, nodeID) + 1;
 	}
 
 	int numInputNodes;
@@ -548,7 +514,19 @@ void Genotype::readFromStream(std::istream &is) {
 	for (std::unordered_map<size_t, float>::iterator it1 = it0->second->_connections.begin(); it1 != it0->second->_connections.end(); it1++)
 		_nodes[it1->first]->_outputNodes.insert(it0->first);*/
 
-	calculateOutgoingConnections();
+	// Calculate outgoing connections
+	for (std::unordered_map<size_t, std::shared_ptr<Node>>::iterator it0 = _nodes.begin(); it0 != _nodes.end(); it0++)
+	for (std::unordered_map<size_t, float>::iterator it1 = it0->second->_connections.begin(); it1 != it0->second->_connections.end();) {
+		std::unordered_map<size_t, std::shared_ptr<Node>>::iterator it2 = _nodes.find(it1->first);
+
+		if (it2 == _nodes.end())
+			it1 = it0->second->_connections.erase(it1);
+		else {
+			_nodes[it1->first]->_outputNodes.insert(it0->first);
+
+			it1++;
+		}
+	} 
 }
 
 void Genotype::writeToStream(std::ostream &os) const {
